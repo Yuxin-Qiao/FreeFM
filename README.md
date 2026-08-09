@@ -124,3 +124,7 @@ The final local release proof produced a 1,802,256-byte arm64 binary. A real
 append-and-confirm sync used 19 HTTP requests, took 4.02 seconds, and peaked at
 15,269,888 bytes RSS. The immediately repeated `sync --quiet` produced no
 stdout or stderr. See `V01-VALIDATION.md` for exact scope and remaining gates.
+
+The optional `automation/launchd/` files are validation tooling, not a FreeFM
+scheduler. They perform hourly read-only `status`/`preview` samples and retain
+only salted hashes and aggregate fields; they never invoke `sync`.

@@ -21,6 +21,8 @@ Hermes gateway 做长期无人值守运行。
   峰值 RSS 15,269,888 bytes、19 个实际 HTTP 请求；
 - 仅持久化 `MUSIC_U` 的 session 已通过重启、读取、append 与复读验证；
 - Hermes no-agent 手动调度已证明 0 LLM 与空输出；job 已暂停，gateway 暂未启动。
+- `com.freefm.validation` LaunchAgent 已启动，每小时只读采样；Codex heartbeat
+  每 6 小时检查一次，达到 7 天后自动关闭验证任务并执行最终收口。
 
 本轮团队目标是交付一个可发布的 v0.1，并用可复核证据回答：
 

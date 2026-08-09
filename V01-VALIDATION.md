@@ -65,11 +65,19 @@ The repository script `experiments/passive-fm-observe.sh` performs read-only
 sampling without playback, skip, trash, or scrobble calls. It deletes raw
 responses and stores only salted per-run hashes and aggregate counts.
 
-Two short-term observations, 6 minutes 14 seconds apart, returned two distinct
-three-track batches and six distinct salted track hashes. This demonstrates
-that passive reads can change recommendations without playback behavior. It
-does **not** yet establish the +1 hour, +24 hour, or multi-day behavior, nor
-whether the server internally consumes a batch when it is fetched.
+Three observations over 53 minutes returned three distinct three-track batches
+and nine distinct salted track hashes. This demonstrates that passive reads
+can change recommendations without playback behavior. It does **not** yet
+establish the +24 hour or multi-day behavior, nor whether the server internally
+consumes a batch when it is fetched.
+
+A user LaunchAgent, `com.freefm.validation`, now runs the repository's
+`automation/launchd/freefm-validation-observe.sh` once per hour. It invokes only
+`status` and `preview`, exits after each sample, suppresses routine output, and
+stores only mode-600 sanitized summaries under `~/.freefm-validation/`. A
+Codex heartbeat checks the evidence every six hours and will remove the
+LaunchAgent after the seven-day gate. This validation-only heartbeat is not
+part of normal FreeFM synchronization.
 
 ## Same-recording identity probe
 
@@ -94,8 +102,8 @@ documentation but no host-level execution proof here.
 
 ## Remaining external gates
 
-- Complete timestamped +1 hour, +24 hour, and preferably 7-day passive FM
-  observations before enabling unattended scheduling.
+- Complete the running +24 hour and 7-day passive FM observations before
+  enabling unattended synchronization.
 - Test session expiry/revocation and QR re-authentication separately; restart
   restoration is proven, server-side expiry is not.
 - Validate the OpenClaw deterministic-command configuration on a host where
