@@ -19,6 +19,14 @@ jobs:
       - run: cargo test --all-targets
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo build --release
+      - name: Validate marketplace skill
+        run: |
+          grep -q '^name: freefm$' SKILL.md
+          grep -q '^name: freefm$' skills/freefm/SKILL.md
+          grep -q '^description:' skills/freefm/SKILL.md
+          cmp automation/hermes/freefm-sync.sh skills/freefm/scripts/freefm-sync.sh
+          sh -n skills/freefm/scripts/freefm-sync.sh
+          python3 -m json.tool skills.sh.json >/dev/null
 
   rustsec:
     runs-on: ubuntu-latest

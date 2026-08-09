@@ -1,5 +1,7 @@
 # FreeFM
 
+[简体中文操作指南](README.zh-CN.md)
+
 > **Project status: experimental alpha.** FreeFM is an independent community
 > project and is not affiliated with, endorsed by, or supported by NetEase
 > Cloud Music. It relies on undocumented service behavior that may change
@@ -142,6 +144,14 @@ stdout or stderr. See `V01-VALIDATION.md` for exact scope and remaining gates.
 The optional `automation/launchd/` files are validation tooling, not a FreeFM
 scheduler. They perform hourly read-only `status`/`preview` samples and retain
 only salted hashes and aggregate fields; they never invoke `sync`.
+
+## OpenClaw and Hermes skill
+
+The cross-platform companion skill lives in `skills/freefm/`. This repository
+is a Hermes-compatible tap, and the same folder is the ClawHub publication
+source. The skill is for installation, authentication, manual verification,
+and scheduler setup; routine synchronization runs as an OpenClaw command
+payload or Hermes `--no-agent` script and therefore uses zero LLM tokens.
 
 ## Security and contributing
 
