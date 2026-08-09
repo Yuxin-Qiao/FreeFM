@@ -8,7 +8,7 @@ Date: 2026-08-09 (Asia/Shanghai)
 - `cargo test --all-targets`: 31 passed, 1 ignored child-process lock helper.
 - `cargo clippy --all-targets -- -D warnings`: passed.
 - `cargo build --release`: passed.
-- `/Users/yuxinqiao/.cargo/bin/cargo-audit audit`: passed; 1,198
+- `cargo-audit audit`: passed; 1,198
   advisories loaded and 174 locked dependencies scanned with no finding.
 - release binary: 1,802,256 bytes, stripped arm64 Mach-O.
 - SHA-256:

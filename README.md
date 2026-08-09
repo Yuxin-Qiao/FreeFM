@@ -1,5 +1,11 @@
 # FreeFM
 
+> **Project status: experimental alpha.** FreeFM is an independent community
+> project and is not affiliated with, endorsed by, or supported by NetEase
+> Cloud Music. It relies on undocumented service behavior that may change
+> without notice. Use it only with your own account and in accordance with the
+> service terms and applicable law.
+
 FreeFM is a small native Rust CLI for NetEase Cloud Music Private FM. It logs
 in through an official-client QR code, samples Private FM, and append-only
 maintains a playlist named `FreeFM · Auto`.
@@ -92,12 +98,12 @@ no ISRC or equivalent authoritative recording identity.
 
 ## Private FM and session findings
 
-Without playing a song and without calling any skip/trash endpoint, two live
-calls 6 minutes 14 seconds apart returned distinct three-song batches. This
+Without playing a song and without calling any skip/trash endpoint, three live
+observations over 53 minutes returned three distinct three-song batches. This
 proves that short-term passive reads can change recommendations. It does not
-yet prove +1 hour, +24 hour, or multi-day behavior, or whether the service
-internally marks a fetched recommendation as consumed; FreeFM never simulates
-playback or skip behavior.
+yet prove +24 hour or multi-day behavior, or whether the service internally
+marks a fetched recommendation as consumed; FreeFM never simulates playback or
+skip behavior.
 
 The QR-created session was saved, the process exited, and a new process later
 returned `authenticated=true` and `vipType=0`. Session restoration is therefore
@@ -128,3 +134,10 @@ stdout or stderr. See `V01-VALIDATION.md` for exact scope and remaining gates.
 The optional `automation/launchd/` files are validation tooling, not a FreeFM
 scheduler. They perform hourly read-only `status`/`preview` samples and retain
 only salted hashes and aggregate fields; they never invoke `sync`.
+
+## Security and contributing
+
+Never paste credentials into an issue, pull request, fixture, or chat. See
+`SECURITY.md` for credential-handling and vulnerability-reporting guidance and
+`CONTRIBUTING.md` for the offline-test requirements. Real-account requests are
+never permitted in CI.
