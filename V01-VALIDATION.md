@@ -97,8 +97,25 @@ successfully. Its persisted run record states `Mode: no_agent (script)` and
 produced no routine output. The job is paused and the Hermes gateway is not
 started until the longer passive-FM observation gate is complete.
 
-OpenClaw is not installed on this host, so its deterministic-command cron has
-documentation but no host-level execution proof here.
+The public Hermes source was installed from the final GitHub `main` commit and
+passed the Hermes community scanner as `SAFE / ALLOWED`. Hermes 0.17 fetched
+only `SKILL.md`; the published instructions therefore include an immutable
+commit URL and SHA-256-verified fallback for the no-agent helper.
+
+OpenClaw 2026.8.1 installed the skill from both a local package and
+`git:Yuxin-Qiao/freefm@main` in isolated state/workspace directories. In both
+cases `openclaw skills list` reported `freefm` as ready. The documented
+`--command-argv` payload is the current model-free Gateway automation surface;
+a live Gateway command-job run is still pending.
+
+ClawHub published `@yuxin-qiao/freefm` version `0.1.0-alpha.1`. Static analysis
+reported clean/benign with high confidence, and VirusTotal reported no
+malicious or suspicious engine result. The initial verification envelope was
+temporarily incomplete only because the server-generated Skill Card was still
+pending. An isolated OpenClaw installation from that exact ClawHub release
+contained both `SKILL.md` and `scripts/freefm-sync.sh`; the helper SHA-256 was
+`b9dd3bd85e32c8ce57ba11ef474149839ad898090495daf7336d396d37830fd1`,
+and `openclaw skills list` reported the installed skill as ready.
 
 ## Remaining external gates
 
@@ -106,6 +123,5 @@ documentation but no host-level execution proof here.
   enabling unattended synchronization.
 - Test session expiry/revocation and QR re-authentication separately; restart
   restoration is proven, server-side expiry is not.
-- Validate the OpenClaw deterministic-command configuration on a host where
-  OpenClaw is installed.
-- Re-run the release gate on CI after the repository is published.
+- Run the OpenClaw deterministic command job against a live isolated Gateway;
+  skill installation and discovery are already proven.
