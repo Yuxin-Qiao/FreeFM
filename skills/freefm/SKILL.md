@@ -85,6 +85,27 @@ Install the bundled fixed-command helper, then create a script-only cron:
 ```sh
 install -d -m 700 "$HOME/.hermes/scripts"
 install -m 755 "{baseDir}/scripts/freefm-sync.sh" "$HOME/.hermes/scripts/freefm-sync.sh"
+```
+
+Hermes 0.17 may install only `SKILL.md` from a community GitHub/skills.sh
+source. If `{baseDir}/scripts/freefm-sync.sh` is absent, ask for approval and
+fetch the helper from the immutable source commit, then verify it before use:
+
+```sh
+helper=$(mktemp)
+curl -fsSL \
+  https://raw.githubusercontent.com/Yuxin-Qiao/freefm/c7bcf10dce142fd85c84f82173a307e91ea99adc/skills/freefm/scripts/freefm-sync.sh \
+  -o "$helper"
+test "$(shasum -a 256 "$helper" | awk '{print $1}')" = \
+  "b9dd3bd85e32c8ce57ba11ef474149839ad898090495daf7336d396d37830fd1"
+install -d -m 700 "$HOME/.hermes/scripts"
+install -m 755 "$helper" "$HOME/.hermes/scripts/freefm-sync.sh"
+rm -f "$helper"
+```
+
+Then create the job:
+
+```sh
 hermes cron create "0 * * * *" \
   --name freefm-hourly \
   --script freefm-sync.sh \

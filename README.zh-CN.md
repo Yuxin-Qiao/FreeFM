@@ -191,7 +191,6 @@ OpenClaw Gateway 必须运行，计划任务才会触发。
 
 ```sh
 hermes skills tap add Yuxin-Qiao/freefm
-hermes skills search freefm
 hermes skills install Yuxin-Qiao/freefm/freefm
 ```
 
@@ -201,13 +200,31 @@ hermes skills install Yuxin-Qiao/freefm/freefm
 hermes skills install Yuxin-Qiao/freefm/skills/freefm
 ```
 
-找到 Hermes 安装后的 skill 目录，将随 skill 发布的脚本安装到指定位置：
+Hermes 0.17 当前可能只安装 `SKILL.md`，不会把 community GitHub/skills.sh
+来源的 `scripts/` 一起下载。因此先检查安装目录；如果其中存在
+`scripts/freefm-sync.sh`，直接安装它：
 
 ```sh
 install -d -m 700 "$HOME/.hermes/scripts"
 install -m 755 /path/to/freefm-skill/scripts/freefm-sync.sh \
   "$HOME/.hermes/scripts/freefm-sync.sh"
 ```
+
+如果脚本不存在，从包含该脚本的不可变 Git commit 下载，并验证 SHA-256：
+
+```sh
+helper=$(mktemp)
+curl -fsSL \
+  https://raw.githubusercontent.com/Yuxin-Qiao/freefm/c7bcf10dce142fd85c84f82173a307e91ea99adc/skills/freefm/scripts/freefm-sync.sh \
+  -o "$helper"
+test "$(shasum -a 256 "$helper" | awk '{print $1}')" = \
+  "b9dd3bd85e32c8ce57ba11ef474149839ad898090495daf7336d396d37830fd1"
+install -d -m 700 "$HOME/.hermes/scripts"
+install -m 755 "$helper" "$HOME/.hermes/scripts/freefm-sync.sh"
+rm -f "$helper"
+```
+
+哈希不一致时立即停止，不要安装或执行该文件。
 
 创建 no-agent cron：
 
