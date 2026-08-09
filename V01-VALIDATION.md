@@ -113,10 +113,11 @@ successfully. Its persisted run record states `Mode: no_agent (script)` and
 produced no routine output. The job is paused and the Hermes gateway is not
 started until the longer passive-FM observation gate is complete.
 
-The public Hermes source was installed from the final GitHub `main` commit and
-passed the Hermes community scanner as `SAFE / ALLOWED`. Hermes 0.17 fetched
-only `SKILL.md`; the published instructions therefore include an immutable
-commit URL and SHA-256-verified fallback for the no-agent helper.
+The public Hermes source was updated to commit
+`8d16bda5c2ad0cd27d8d176c2d086b3b1c618471` and passed a fresh Hermes
+community scan as `SAFE / ALLOWED`. Hermes 0.17 fetched only `SKILL.md`; the
+published instructions therefore include an immutable commit URL and
+SHA-256-verified fallback for the no-agent helper.
 
 OpenClaw 2026.8.1 installed the skill from both a local package and
 `git:Yuxin-Qiao/FreeFM@main` in isolated state/workspace directories. In both
@@ -124,14 +125,13 @@ cases `openclaw skills list` reported `freefm` as ready. The documented
 `--command-argv` payload is the current model-free Gateway automation surface;
 a live Gateway command-job run is still pending.
 
-ClawHub published `@yuxin-qiao/freefm` version `0.1.0-alpha.1`. Static analysis
-reported clean/benign with high confidence, and VirusTotal reported no
-malicious or suspicious engine result. The initial verification envelope was
-temporarily incomplete only because the server-generated Skill Card was still
-pending. An isolated OpenClaw installation from that exact ClawHub release
-contained both `SKILL.md` and `scripts/freefm-sync.sh`; the helper SHA-256 was
-`b9dd3bd85e32c8ce57ba11ef474149839ad898090495daf7336d396d37830fd1`,
-and `openclaw skills list` reported the installed skill as ready.
+ClawHub published `@yuxin-qiao/freefm` version `0.1.0-alpha.3` from the same
+GitHub commit and moved both `alpha` and `latest` to that version. Its security
+result was clean/benign with high confidence and no warning. An isolated
+OpenClaw installation downloaded that exact public release, contained both
+`SKILL.md` and `scripts/freefm-sync.sh`, exposed the TUI instructions, and
+reported the skill as ready. The helper SHA-256 remained
+`b9dd3bd85e32c8ce57ba11ef474149839ad898090495daf7336d396d37830fd1`.
 
 ## Remaining external gates
 
