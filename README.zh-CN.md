@@ -142,13 +142,15 @@ freefm status --quiet
 
 ### 安装 companion skill
 
-ClawHub 审核完成后可以使用：
+ClawHub 页面：<https://clawhub.ai/yuxin-qiao/skills/freefm>
+
+安装已公开的 alpha skill：
 
 ```sh
-openclaw skills install @Yuxin-Qiao/freefm
+openclaw skills install @yuxin-qiao/freefm
 ```
 
-审核完成前，也可以从 GitHub 安装仓库根 skill：
+也可以从 GitHub 安装仓库根 skill：
 
 ```sh
 openclaw skills install git:Yuxin-Qiao/freefm@main --as freefm

@@ -153,6 +153,10 @@ source. The skill is for installation, authentication, manual verification,
 and scheduler setup; routine synchronization runs as an OpenClaw command
 payload or Hermes `--no-agent` script and therefore uses zero LLM tokens.
 
+- ClawHub: [@yuxin-qiao/freefm](https://clawhub.ai/yuxin-qiao/skills/freefm)
+- OpenClaw: `openclaw skills install @yuxin-qiao/freefm`
+- Hermes: `hermes skills install Yuxin-Qiao/freefm/skills/freefm`
+
 ## Security and contributing
 
 Never paste credentials into an issue, pull request, fixture, or chat. See
