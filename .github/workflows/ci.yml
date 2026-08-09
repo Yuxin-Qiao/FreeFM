@@ -2,7 +2,15 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   rust:
@@ -18,7 +26,7 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo test --all-targets
       - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo build --release
+      - run: cargo build --release --locked
       - name: Validate marketplace skill
         run: |
           grep -q '^name: freefm$' SKILL.md
