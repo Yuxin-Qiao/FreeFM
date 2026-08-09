@@ -33,7 +33,7 @@ Windows 暂不支持。
 将 alpha 安装到 `~/.local/bin/freefm`：
 
 ```sh
-cargo install --git https://github.com/Yuxin-Qiao/freefm \
+cargo install --git https://github.com/Yuxin-Qiao/FreeFM \
   --locked \
   --root "$HOME/.local"
 ```
@@ -54,7 +54,7 @@ freefm --help
 更新时重新运行 `cargo install`，并增加 `--force`：
 
 ```sh
-cargo install --git https://github.com/Yuxin-Qiao/freefm \
+cargo install --git https://github.com/Yuxin-Qiao/FreeFM \
   --locked \
   --root "$HOME/.local" \
   --force
@@ -153,7 +153,7 @@ openclaw skills install @yuxin-qiao/freefm
 也可以从 GitHub 安装仓库根 skill：
 
 ```sh
-openclaw skills install git:Yuxin-Qiao/freefm@main --as freefm
+openclaw skills install git:Yuxin-Qiao/FreeFM@main --as freefm
 ```
 
 ### 创建 deterministic command job
@@ -192,14 +192,14 @@ OpenClaw Gateway 必须运行，计划任务才会触发。
 可以把本仓库加入 Hermes tap：
 
 ```sh
-hermes skills tap add Yuxin-Qiao/freefm
-hermes skills install Yuxin-Qiao/freefm/freefm
+hermes skills tap add Yuxin-Qiao/FreeFM
+hermes skills install Yuxin-Qiao/FreeFM/freefm
 ```
 
 也可以直接安装：
 
 ```sh
-hermes skills install Yuxin-Qiao/freefm/skills/freefm
+hermes skills install Yuxin-Qiao/FreeFM/skills/freefm
 ```
 
 Hermes 0.17 当前可能只安装 `SKILL.md`，不会把 community GitHub/skills.sh
@@ -217,7 +217,7 @@ install -m 755 /path/to/freefm-skill/scripts/freefm-sync.sh \
 ```sh
 helper=$(mktemp)
 curl -fsSL \
-  https://raw.githubusercontent.com/Yuxin-Qiao/freefm/c7bcf10dce142fd85c84f82173a307e91ea99adc/skills/freefm/scripts/freefm-sync.sh \
+  https://raw.githubusercontent.com/Yuxin-Qiao/FreeFM/c7bcf10dce142fd85c84f82173a307e91ea99adc/skills/freefm/scripts/freefm-sync.sh \
   -o "$helper"
 test "$(shasum -a 256 "$helper" | awk '{print $1}')" = \
   "b9dd3bd85e32c8ce57ba11ef474149839ad898090495daf7336d396d37830fd1"
@@ -283,7 +283,7 @@ freefm auth
 ### `api_incompatible`
 
 网易云响应结构或接口行为发生变化。停止定时任务，保留脱敏错误类别，并到
-[GitHub Issues](https://github.com/Yuxin-Qiao/freefm/issues) 报告；不要附带
+[GitHub Issues](https://github.com/Yuxin-Qiao/FreeFM/issues) 报告；不要附带
 Cookie、账号 ID、播放 URL 或完整响应。
 
 ### `concurrent_sync`

@@ -103,7 +103,7 @@ only `SKILL.md`; the published instructions therefore include an immutable
 commit URL and SHA-256-verified fallback for the no-agent helper.
 
 OpenClaw 2026.8.1 installed the skill from both a local package and
-`git:Yuxin-Qiao/freefm@main` in isolated state/workspace directories. In both
+`git:Yuxin-Qiao/FreeFM@main` in isolated state/workspace directories. In both
 cases `openclaw skills list` reported `freefm` as ready. The documented
 `--command-argv` payload is the current model-free Gateway automation surface;
 a live Gateway command-job run is still pending.

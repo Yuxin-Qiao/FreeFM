@@ -5,7 +5,7 @@ license: MIT
 metadata:
   openclaw:
     emoji: "🎵"
-    homepage: https://github.com/Yuxin-Qiao/freefm
+    homepage: https://github.com/Yuxin-Qiao/FreeFM
     os: [darwin, linux]
 ---
 
