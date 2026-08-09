@@ -52,7 +52,7 @@ impl Display for AppError {
         match self {
             Self::Usage(message) => write!(f, "{message}"),
             Self::Help(message) => write!(f, "{message}"),
-            Self::Version => write!(f, "freefm {VERSION}"),
+            Self::Version => write!(f, "FreeFM {VERSION}"),
             Self::LoginRequired => write!(f, "登录已失效或尚未登录；请运行 freefm auth"),
             Self::OrdinaryAccountRequired => write!(
                 f,
@@ -149,7 +149,7 @@ impl Cli {
 }
 
 fn usage() -> String {
-    "用法：freefm <auth|preview|sync|status|doctor> [--json] [--quiet] [--data-dir PATH]\n\n\
+    "FreeFM\n\n用法：freefm <auth|preview|sync|status|doctor> [--json] [--quiet] [--data-dir PATH]\n\n\
 auth     生成二维码并等待网易云官方客户端确认\n\
 preview  读取私人 FM 并预览加入、候选、跳过；绝不写远端歌单\n\
 sync     读取私人 FM，并 append-only 写入 FreeFM · Auto\n\
@@ -1533,7 +1533,7 @@ fn main() -> ExitCode {
             return ExitCode::SUCCESS;
         }
         Err(AppError::Version) => {
-            println!("freefm {VERSION}");
+            println!("FreeFM {VERSION}");
             return ExitCode::SUCCESS;
         }
         Err(error) => {
@@ -2170,6 +2170,8 @@ mod tests {
             Cli::parse(["freefm".to_string(), "--version".to_string()]),
             Err(AppError::Version)
         ));
+        assert_eq!(AppError::Version.to_string(), "FreeFM 0.1.0");
+        assert!(usage().starts_with("FreeFM\n\n用法：freefm "));
     }
 
     #[test]

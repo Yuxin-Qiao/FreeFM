@@ -117,7 +117,7 @@ running `auth` again.
 Install the current alpha directly from the repository:
 
 ```shell
-cargo install --git https://github.com/Yuxin-Qiao/freefm --locked
+cargo install --git https://github.com/Yuxin-Qiao/FreeFM --locked
 ```
 
 Or build a checkout locally:
@@ -155,7 +155,7 @@ payload or Hermes `--no-agent` script and therefore uses zero LLM tokens.
 
 - ClawHub: [@yuxin-qiao/freefm](https://clawhub.ai/yuxin-qiao/skills/freefm)
 - OpenClaw: `openclaw skills install @yuxin-qiao/freefm`
-- Hermes: `hermes skills install Yuxin-Qiao/freefm/skills/freefm`
+- Hermes: `hermes skills install Yuxin-Qiao/FreeFM/skills/freefm`
 
 ## Security and contributing
 

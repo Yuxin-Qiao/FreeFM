@@ -5,7 +5,7 @@ license: MIT
 metadata:
   openclaw:
     emoji: "🎵"
-    homepage: https://github.com/Yuxin-Qiao/freefm
+    homepage: https://github.com/Yuxin-Qiao/FreeFM
     os: [darwin, linux]
   hermes:
     tags: [music, netease, private-fm, cli, automation, zero-llm]
@@ -36,7 +36,7 @@ Prefer an existing `freefm` on `PATH`, then `$HOME/.local/bin/freefm`. If it is
 missing, tell the user to install the public alpha from source:
 
 ```sh
-cargo install --git https://github.com/Yuxin-Qiao/freefm --locked --root "$HOME/.local"
+cargo install --git https://github.com/Yuxin-Qiao/FreeFM --locked --root "$HOME/.local"
 ```
 
 Do not run an installer without explicit user approval. FreeFM supports macOS
@@ -94,7 +94,7 @@ fetch the helper from the immutable source commit, then verify it before use:
 ```sh
 helper=$(mktemp)
 curl -fsSL \
-  https://raw.githubusercontent.com/Yuxin-Qiao/freefm/c7bcf10dce142fd85c84f82173a307e91ea99adc/skills/freefm/scripts/freefm-sync.sh \
+  https://raw.githubusercontent.com/Yuxin-Qiao/FreeFM/c7bcf10dce142fd85c84f82173a307e91ea99adc/skills/freefm/scripts/freefm-sync.sh \
   -o "$helper"
 test "$(shasum -a 256 "$helper" | awk '{print $1}')" = \
   "b9dd3bd85e32c8ce57ba11ef474149839ad898090495daf7336d396d37830fd1"
@@ -125,4 +125,4 @@ success is silent and consumes no LLM tokens.
 - FreeFM is absent from the process list between scheduled runs.
 
 For user-facing installation, recovery, removal, and troubleshooting steps,
-refer to https://github.com/Yuxin-Qiao/freefm/blob/main/README.zh-CN.md.
+refer to https://github.com/Yuxin-Qiao/FreeFM/blob/main/README.zh-CN.md.
