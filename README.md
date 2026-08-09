@@ -112,6 +112,14 @@ running `auth` again.
 
 ## Development
 
+Install the current alpha directly from the repository:
+
+```shell
+cargo install --git https://github.com/Yuxin-Qiao/freefm --locked
+```
+
+Or build a checkout locally:
+
 ```shell
 cargo test
 cargo clippy --all-targets -- -D warnings

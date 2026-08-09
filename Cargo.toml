@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 description = "A native Rust CLI that mirrors free-playable NetEase Cloud Music Private FM songs into an append-only playlist"
 license = "MIT"
+repository = "https://github.com/Yuxin-Qiao/freefm"
 
 [dependencies]
 libc = "0.2"
