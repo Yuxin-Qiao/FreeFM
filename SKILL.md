@@ -1,6 +1,6 @@
 ---
 name: freefm
-description: Set up and operate FreeFM for NetEase Private FM preview, append-only free-track sync, QR login, diagnostics, and zero-LLM OpenClaw/Hermes scheduling.
+description: Set up and operate the FreeFM Rust app for NetEase Private FM, including its TUI, QR login, read-only preview, append-only sync, diagnostics, and zero-LLM scheduling.
 license: MIT
 metadata:
   openclaw:

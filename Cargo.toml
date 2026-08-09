@@ -2,11 +2,16 @@
 name = "freefm"
 version = "0.1.0"
 edition = "2024"
-description = "A native Rust CLI that mirrors free-playable NetEase Cloud Music Private FM songs into an append-only playlist"
+description = "Native Rust CLI and TUI for safely syncing free-playable NetEase Private FM tracks"
 license = "MIT"
 repository = "https://github.com/Yuxin-Qiao/FreeFM"
+homepage = "https://github.com/Yuxin-Qiao/FreeFM"
+readme = "README.md"
+keywords = ["netease", "private-fm", "playlist", "cli"]
+categories = ["command-line-utilities", "multimedia::audio"]
 
 [dependencies]
+crossterm = { version = "0.29", default-features = false, features = ["events"] }
 libc = "0.2"
 netease-music = "=0.1.1"
 qrcode = { version = "0.14.1", default-features = false }

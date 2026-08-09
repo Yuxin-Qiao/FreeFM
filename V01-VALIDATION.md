@@ -22,6 +22,22 @@ owner collisions, more than 500 playlist tracks, timeout/5xx/incompatible
 responses, post-create and post-append recovery, state-save failure recovery,
 cross-process lock exclusion, JSON/quiet behavior, and credential redaction.
 
+### Current product-experience build
+
+The original live proof below remains tied to its exact frozen binary. After
+adding the optional `freefm tui` front end on 2026-08-10, the current release
+build passed 34 tests with 1 ignored child-process helper. The stripped arm64
+binary is 1,854,192 bytes with SHA-256
+`306a73cb3528a58a45712a1e7a31b7cb56953462e7056b99e8e3c3694611e065`.
+That is a 51,936-byte (2.9%) increase over the live-proof binary. A cold
+`--version` execution measured below 0.01 seconds and 2,097,152 bytes maximum
+resident set size. The TUI is not loaded by normal `sync --quiet` scheduling.
+
+The WorkBuddy packaging script produced a ZIP containing only
+`freefm/SKILL.md` and `freefm/scripts/freefm-sync.sh`; CI validates both paths
+and shell syntax. This establishes package reproducibility, not a completed
+Tencent WorkBuddy client import.
+
 ## Live session and write proof
 
 The final proof used the exact release binary identified above and a fresh data
