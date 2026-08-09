@@ -70,8 +70,8 @@ Resolve the absolute binary path first. Create an operator-admin command job
 with exact argv, no delivery, and no Agent/model payload:
 
 ```sh
-openclaw automations create "0 * * * *" \
-  --name "FreeFM hourly sync" \
+openclaw automations add --every 1h \
+  --name freefm-hourly \
   --command-argv '["/absolute/path/to/freefm","sync","--quiet"]' \
   --no-deliver \
   --timeout-seconds 120
@@ -119,6 +119,15 @@ hermes cron create "0 * * * *" \
 Use `hermes cron list` to obtain the job ID and `hermes cron run <job-id>` for
 one manual verification. `--no-agent` makes the script the job; empty stdout on
 success is silent and consumes no LLM tokens.
+
+## Tencent WorkBuddy local skill
+
+When this directory is imported as a local WorkBuddy skill, use the same
+interactive workflow and guardrails above. Confirm the local terminal command
+capability can resolve `freefm`, then run `status --json` and `preview --json`.
+Do not run `auth` in a hidden terminal: the user must see and scan the QR code.
+Do not create an unattended task until one user-confirmed `sync` succeeds, and
+keep its payload fixed to `freefm sync --quiet` without an Agent turn.
 
 ## Verification
 

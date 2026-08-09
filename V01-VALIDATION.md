@@ -35,8 +35,12 @@ resident set size. The TUI is not loaded by normal `sync --quiet` scheduling.
 
 The WorkBuddy packaging script produced a ZIP containing only
 `freefm/SKILL.md` and `freefm/scripts/freefm-sync.sh`; CI validates both paths
-and shell syntax. This establishes package reproducibility, not a completed
-Tencent WorkBuddy client import.
+and shell syntax. Tencent WorkBuddy 5.1.2 for Apple silicon was downloaded from
+the official archive, installed, and accepted by macOS Gatekeeper with a
+stapled notarization ticket and the Tencent Technology (Shanghai) Company
+Limited Developer ID signature. This establishes client provenance and package
+reproducibility, not a completed import: interactive user login is still
+required before the local ZIP can be uploaded.
 
 ## Live session and write proof
 
@@ -81,11 +85,13 @@ The repository script `experiments/passive-fm-observe.sh` performs read-only
 sampling without playback, skip, trash, or scrobble calls. It deletes raw
 responses and stores only salted per-run hashes and aggregate counts.
 
-Three observations over 53 minutes returned three distinct three-track batches
-and nine distinct salted track hashes. This demonstrates that passive reads
-can change recommendations without playback behavior. It does **not** yet
-establish the +24 hour or multi-day behavior, nor whether the server internally
-consumes a batch when it is fetched.
+As of 2026-08-10 02:21 Asia/Shanghai, six observations over 3 hours 53 minutes
+returned six distinct three-track batches and 18 distinct salted track hashes.
+Four hourly session checks all remained authenticated with explicit
+`vipType=0`. This demonstrates that passive reads can change recommendations
+without playback behavior. It does **not** yet establish the +24 hour or
+multi-day behavior, nor whether the server internally consumes a batch when it
+is fetched.
 
 A user LaunchAgent, `com.freefm.validation`, now runs the repository's
 `automation/launchd/freefm-validation-observe.sh` once per hour. It invokes only
@@ -121,9 +127,14 @@ SHA-256-verified fallback for the no-agent helper.
 
 OpenClaw 2026.8.1 installed the skill from both a local package and
 `git:Yuxin-Qiao/FreeFM@main` in isolated state/workspace directories. In both
-cases `openclaw skills list` reported `freefm` as ready. The documented
-`--command-argv` payload is the current model-free Gateway automation surface;
-a live Gateway command-job run is still pending.
+cases `openclaw skills list` reported `freefm` as ready. On 2026-08-10 an
+isolated token-authenticated Gateway then executed a command job whose exact
+argv was a proof executable followed by `sync --quiet`. The run completed in
+555 ms with exit code 0, no stdout or stderr, no delivery request, and no agent
+message payload. The proof job was removed and the Gateway stopped immediately
+afterward. This validates the deterministic Gateway command path without
+contacting NetEase or using an LLM; it does not enable unattended production
+sync before the longer passive-FM gate.
 
 ClawHub published `@yuxin-qiao/freefm` version `0.1.0-alpha.3` from the same
 GitHub commit and moved both `alpha` and `latest` to that version. Its security
@@ -139,5 +150,5 @@ reported the skill as ready. The helper SHA-256 remained
   enabling unattended synchronization.
 - Test session expiry/revocation and QR re-authentication separately; restart
   restoration is proven, server-side expiry is not.
-- Run the OpenClaw deterministic command job against a live isolated Gateway;
-  skill installation and discovery are already proven.
+- Complete the signed Tencent WorkBuddy client import after the user completes
+  its interactive login; package structure is already proven offline.
