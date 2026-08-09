@@ -10,11 +10,14 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fmt::{self, Display};
 use std::fs::{self, File, OpenOptions};
+use std::io::IsTerminal;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+mod tui;
 
 #[cfg(not(unix))]
 compile_error!("FreeFM v0.1 supports macOS and Linux only");
@@ -139,6 +142,11 @@ impl Cli {
                 "auth 需要交互式二维码，不能使用 --quiet".to_string(),
             ));
         }
+        if quiet && command == "tui" {
+            return Err(AppError::Usage(
+                "tui 是交互界面，不能使用 --quiet".to_string(),
+            ));
+        }
         Ok(Self {
             command,
             json: json_output,
@@ -149,12 +157,13 @@ impl Cli {
 }
 
 fn usage() -> String {
-    "FreeFM\n\n用法：freefm <auth|preview|sync|status|doctor> [--json] [--quiet] [--data-dir PATH]\n\n\
+    "FreeFM\n\n用法：freefm <auth|preview|sync|status|doctor|tui> [--json] [--quiet] [--data-dir PATH]\n\n\
 auth     生成二维码并等待网易云官方客户端确认\n\
 preview  读取私人 FM 并预览加入、候选、跳过；绝不写远端歌单\n\
 sync     读取私人 FM，并 append-only 写入 FreeFM · Auto\n\
 status   检查本机会话和登录状态\n\
 doctor   检查本机状态、权限和 API 登录可用性
+tui      打开轻量交互界面；不会改变命令的安全边界
 version  输出版本号"
         .to_string()
 }
@@ -1526,7 +1535,7 @@ fn run(cli: Cli) -> AppResult<Value> {
 }
 
 fn main() -> ExitCode {
-    let cli = match Cli::parse(env::args()) {
+    let mut cli = match Cli::parse(env::args()) {
         Ok(cli) => cli,
         Err(AppError::Help(message)) => {
             println!("{message}");
@@ -1541,6 +1550,25 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
+    if cli.command == "tui" {
+        if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
+            eprintln!("tui 需要交互式终端；自动化请直接运行 freefm sync --quiet");
+            return ExitCode::from(2);
+        }
+        let tui_data_dir = Paths::from_cli(&cli).root;
+        match tui::choose(cli.json, Some(&tui_data_dir)) {
+            Ok(Some(choice)) => {
+                cli.command = choice.command.to_string();
+                cli.json = choice.json;
+                cli.quiet = false;
+            }
+            Ok(None) => return ExitCode::SUCCESS,
+            Err(error) => {
+                eprintln!("无法打开 FreeFM TUI：{error}");
+                return ExitCode::from(1);
+            }
+        }
+    }
     match run(cli.clone()) {
         Ok(value) => {
             let human = match cli.command.as_str() {
@@ -2172,6 +2200,15 @@ mod tests {
         ));
         assert_eq!(AppError::Version.to_string(), "FreeFM 0.1.0");
         assert!(usage().starts_with("FreeFM\n\n用法：freefm "));
+        assert!(usage().contains("tui      打开轻量交互界面"));
+        assert!(matches!(
+            Cli::parse([
+                "freefm".to_string(),
+                "tui".to_string(),
+                "--quiet".to_string()
+            ]),
+            Err(AppError::Usage(_))
+        ));
     }
 
     #[test]

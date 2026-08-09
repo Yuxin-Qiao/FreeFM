@@ -1,6 +1,6 @@
 ---
 name: freefm
-description: Set up and operate FreeFM for NetEase Private FM preview, append-only free-track sync, QR login, diagnostics, and zero-LLM OpenClaw/Hermes scheduling.
+description: Set up and operate the FreeFM Rust app for NetEase Private FM, including its TUI, QR login, read-only preview, append-only sync, diagnostics, and zero-LLM scheduling.
 license: MIT
 metadata:
   openclaw:
@@ -48,12 +48,16 @@ Run authentication in a terminal visible to the user so they can scan the QR
 code with the official NetEase Cloud Music client:
 
 ```sh
+freefm tui
 freefm auth
 freefm status --json
 freefm preview --json
 freefm sync
 freefm sync --quiet
 ```
+
+Use `freefm tui` for guided interactive setup. It is only a front end for the
+commands below. Never use the TUI in a scheduler.
 
 Confirm `authenticated=true` and `account_vip_type=0` before sync. Treat
 `login_required`, `ordinary_account_required`, `api_incompatible`, ambiguous
