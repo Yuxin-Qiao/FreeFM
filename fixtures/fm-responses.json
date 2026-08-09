@@ -1,0 +1,43 @@
+{
+  "private_fm": {
+    "code": 200,
+    "data": [
+      {"id": 1001, "name": "Free Song", "dt": 180000, "ar": [{"name": "Free Artist"}], "al": {"name": "Free Album"}, "fee": 0, "privilege": {"fee": 0, "st": 0, "pl": 320000}},
+      {"id": 1002, "name": "VIP Song", "dt": 210000, "ar": [{"name": "VIP Artist"}], "al": {"name": "VIP Album"}, "fee": 1, "privilege": {"fee": 1, "st": 0, "pl": 0}},
+      {"id": 1003, "name": "Unavailable Song", "dt": 200000, "ar": [{"name": "Unavailable Artist"}], "al": {"name": "Unavailable Album"}, "fee": 0, "privilege": {"fee": 0, "st": -200, "pl": 0}},
+      {"id": 1004, "name": "Same Song", "dt": 190000, "ar": [{"name": "Same Artist"}], "al": {"name": "Paid Album"}, "fee": 1, "privilege": {"fee": 1, "st": 0, "pl": 0}}
+    ]
+  },
+  "search_correct_free_version": {
+    "result": {"songs": [
+      {"id": 2004, "name": "Same Song", "dt": 190300, "ar": [{"name": "Same Artist"}], "al": {"name": "Free Single"}, "fee": 0, "privilege": {"fee": 0, "st": 0, "pl": 320000}}
+    ]}
+  },
+  "search_wrong_artist": {
+    "result": {"songs": [
+      {"id": 3004, "name": "Same Song", "dt": 190000, "ar": [{"name": "Wrong Artist"}], "al": {"name": "Free Single"}, "fee": 0, "privilege": {"fee": 0, "st": 0, "pl": 320000}}
+    ]}
+  },
+  "search_variant_mismatch": {
+    "result": {"songs": [
+      {"id": 4004, "name": "Same Song (Live)", "dt": 190000, "ar": [{"name": "Same Artist"}], "al": {"name": "Live Album"}, "fee": 0, "privilege": {"fee": 0, "st": 0, "pl": 320000}}
+    ]}
+  },
+  "playback": {
+    "free": {"code": 200, "data": [{"id": 1001, "url": "REDACTED_NOT_STORED", "fee": 0, "freeTrialInfo": null}]},
+    "vip": {"code": 200, "data": [{"id": 1002, "url": null, "fee": 1, "freeTrialInfo": null}]},
+    "unavailable": {"code": 200, "data": [{"id": 1003, "url": null, "fee": 0, "freeTrialInfo": null}]},
+    "trial": {"code": 200, "data": [{"id": 1005, "url": "REDACTED_NOT_STORED", "fee": 0, "freeTrialInfo": {"start": 0, "end": 30000}}]}
+  },
+  "playlist": {"code": 200, "playlist": {"id": 9001, "trackIds": [{"id": 1001}, {"id": 2004}]}},
+  "edge_cases": {
+    "missing_privilege": {"id": 5001, "name": "Missing Privilege", "dt": 180000, "ar": [{"name": "Artist"}], "al": {"name": "Album"}, "fee": 0},
+    "string_privilege": {"id": 5002, "name": "String Privilege", "dt": 180000, "ar": [{"name": "Artist"}], "al": {"name": "Album"}, "fee": "0", "privilege": {"fee": "0", "st": 0, "pl": 320000}},
+    "missing_play_bitrate": {"id": 5003, "name": "Missing Bitrate", "dt": 180000, "ar": [{"name": "Artist"}], "al": {"name": "Album"}, "fee": 0, "privilege": {"fee": 0, "st": 0}},
+    "contradictory_probe": {"id": 5004, "name": "Contradictory Probe", "dt": 180000, "ar": [{"name": "Artist"}], "al": {"name": "Album"}, "fee": 0, "privilege": {"fee": 0, "st": 0, "pl": 320000}, "playback": {"url": "REDACTED_NOT_STORED", "fee": 1}},
+    "same_artist_rerecording": {"id": 5005, "name": "Same Song", "dt": 190100, "ar": [{"name": "Same Artist"}], "al": {"name": "20XX Re-recording"}, "fee": 0, "privilege": {"fee": 0, "st": 0, "pl": 320000}},
+    "remaster": {"id": 5006, "name": "Same Song (Remaster)", "dt": 190000, "ar": [{"name": "Same Artist"}], "al": {"name": "Remaster"}, "fee": 0, "privilege": {"fee": 0, "st": 0, "pl": 320000}},
+    "radio_edit": {"id": 5007, "name": "Same Song (Radio Edit)", "dt": 180000, "ar": [{"name": "Same Artist"}], "al": {"name": "Single"}, "fee": 0, "privilege": {"fee": 0, "st": 0, "pl": 320000}},
+    "variant_negative_titles": ["Same Song (Live)", "Same Song Remix", "Same Song 翻唱", "Same Song DJ", "Same Song 伴奏", "Same Song (Acoustic)", "Same Song sped-up", "Same Song slowed", "Same Song Demo", "Same Song Edit"]
+  }
+}
