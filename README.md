@@ -111,11 +111,11 @@ The Rust binary is the product; platform integrations only install and invoke
 its deterministic command. Routine scheduled sync uses **zero LLM tokens**.
 
 | Platform | Installation | Scheduled Path (0 LLM) | Validation Evidence |
-|:---|:---|:---|:---|
-| <img src="assets/platforms/openclaw.svg" width="28" height="28" valign="middle">&nbsp;**OpenClaw** | `openclaw skills install` `@yuxin-qiao/freefm` | Gateway `--command-argv` | Isolated Gateway run (exit 0) |
-| <img src="assets/platforms/hermes.png" width="28" height="28" valign="middle">&nbsp;**Hermes** | `hermes skills install` `Yuxin-Qiao/FreeFM/skills/freefm` | Script `--no-agent` | Hermes scan `SAFE / ALLOWED` |
-| <img src="assets/platforms/workbuddy.png" width="28" height="28" valign="middle">&nbsp;**WorkBuddy** | Upload `freefm-workbuddy.zip` | Local command capability | Signed client & package verified |
-| <img src="assets/platforms/codex.svg" width="28" height="28" valign="middle">&nbsp;**Codex** | Copy `skills/freefm` to `~/.codex/skills/freefm` | OS cron / `codex sandbox` | Skill structure verified |
+| :--- | :--- | :--- | :--- |
+| <img src="assets/platforms/openclaw.svg" width="20" height="20"> **OpenClaw** | `openclaw skills install @yuxin-qiao/freefm` | Gateway `--command-argv` | Isolated Gateway run (exit 0) |
+| <img src="assets/platforms/hermes.png" width="20" height="20"> **Hermes** | `hermes skills install Yuxin-Qiao/FreeFM/skills/freefm` | Script `--no-agent` | Hermes scan `SAFE / ALLOWED` |
+| <img src="assets/platforms/workbuddy.png" width="20" height="20"> **WorkBuddy** | Upload `freefm-workbuddy.zip` | Local command capability | Signed client & package verified |
+| <img src="assets/platforms/codex.svg" width="20" height="20"> **Codex** | Copy `skills/freefm` to `~/.codex/skills/freefm` | OS cron / `codex sandbox` | Skill structure verified |
 
 OpenClaw example:
 
