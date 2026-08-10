@@ -42,9 +42,7 @@ jobs:
           sh -n skills/freefm/scripts/freefm-sync.sh
           sh -n scripts/package-workbuddy.sh
           sh -n scripts/install.sh
-          scripts/package-workbuddy.sh target/freefm-workbuddy.zip
-          unzip -l target/freefm-workbuddy.zip | grep -q 'freefm/SKILL.md'
-          unzip -l target/freefm-workbuddy.zip | grep -q 'freefm/scripts/freefm-sync.sh'
+          scripts/release-smoke-test.sh
           python3 -m json.tool skills.sh.json >/dev/null
 
   # Minimum supported Rust version: verified with the same fake-transport,

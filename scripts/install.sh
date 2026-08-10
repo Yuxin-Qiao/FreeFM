@@ -52,24 +52,38 @@ if ! curl -fsSL "$DOWNLOAD_URL" -o "$tmpdir/$ARTIFACT"; then
   exit 1
 fi
 
-if curl -fsSL "$CHECKSUM_URL" -o "$tmpdir/${ARTIFACT}.sha256" 2>/dev/null; then
-  echo "Verifying SHA-256 checksum..."
-  expected_sha=$(awk '{print $1}' "$tmpdir/${ARTIFACT}.sha256")
-  if command -v sha256sum >/dev/null 2>&1; then
-    actual_sha=$(sha256sum "$tmpdir/$ARTIFACT" | awk '{print $1}')
-  elif command -v shasum >/dev/null 2>&1; then
-    actual_sha=$(shasum -a 256 "$tmpdir/$ARTIFACT" | awk '{print $1}')
-  else
-    actual_sha=""
-  fi
-  if [ -n "$actual_sha" ] && [ "$expected_sha" != "$actual_sha" ]; then
-    echo "Error: Checksum mismatch for $ARTIFACT!" >&2
-    echo "Expected: $expected_sha" >&2
-    echo "Actual:   $actual_sha" >&2
-    exit 1
-  fi
-  echo "Checksum verified cleanly."
+echo "Downloading SHA-256 checksum..."
+if ! curl -fsSL "$CHECKSUM_URL" -o "$tmpdir/${ARTIFACT}.sha256"; then
+  echo "Error: Failed to download checksum file from $CHECKSUM_URL" >&2
+  echo "Refusing to install unverified artifact." >&2
+  exit 1
 fi
+
+expected_sha=$(awk '{print $1}' "$tmpdir/${ARTIFACT}.sha256" | tr -d '\r\n')
+if [ -z "$expected_sha" ]; then
+  echo "Error: Checksum file $CHECKSUM_URL is empty or invalid." >&2
+  exit 1
+fi
+
+echo "Verifying SHA-256 checksum..."
+if command -v sha256sum >/dev/null 2>&1; then
+  actual_sha=$(sha256sum "$tmpdir/$ARTIFACT" | awk '{print $1}')
+elif command -v shasum >/dev/null 2>&1; then
+  actual_sha=$(shasum -a 256 "$tmpdir/$ARTIFACT" | awk '{print $1}')
+else
+  echo "Error: Neither sha256sum nor shasum is available to verify artifact checksum." >&2
+  echo "Refusing to install unverified artifact." >&2
+  exit 1
+fi
+
+if [ "$expected_sha" != "$actual_sha" ]; then
+  echo "Error: Checksum mismatch for $ARTIFACT!" >&2
+  echo "Expected: $expected_sha" >&2
+  echo "Actual:   $actual_sha" >&2
+  echo "Refusing to install corrupted or tampered artifact." >&2
+  exit 1
+fi
+echo "Checksum verified cleanly."
 
 mkdir -p "$tmpdir/extracted"
 tar -C "$tmpdir/extracted" -xzf "$tmpdir/$ARTIFACT"
