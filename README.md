@@ -93,27 +93,54 @@ CLI, never the TUI.
 
 ## Commands
 
-| Command | Write Mode | Purpose |
-| :--- | :--- | :--- |
-| `freefm auth` | Read-only | Official-client QR code login |
-| `freefm preview` | Read-only | Preview planned additions, candidates, and skips |
-| `freefm sync` | Append-only | Append strictly verified free tracks to `FreeFM · Auto` |
-| `freefm status` | Read-only | Check local session and account status |
-| `freefm doctor` | Read-only | Check permissions, data directory, and API structure |
-| `freefm tui` | Interactive | Guided terminal menu for all commands |
+| Command | Remote write | Purpose |
+|---|---:|---|
+| `freefm auth` | No | Official-client QR login |
+| `freefm preview` | No | Show additions, candidates, skips |
+| `freefm sync` | Append only | Add strictly verified free originals |
+| `freefm status` | No | Check local session and account |
+| `freefm doctor` | No | Check permissions, state, and API shape |
+| `freefm tui` | Selected action | Guided terminal interface |
 
-`--json` for stable machine output, `--quiet` for silent success; `--data-dir PATH` or `FREEFM_HOME` isolates the state root.
+`--json` for stable machine output, `--quiet` for silent success; `--data-dir
+PATH` or `FREEFM_HOME` isolates the state root.
 
 ## Agent platforms
 
-The Rust binary is the product; platform integrations only install and invoke its deterministic command. Routine scheduled sync uses **zero LLM tokens**.
+The Rust binary is the product; platform integrations only install and invoke
+its deterministic command. Routine scheduled sync uses **zero LLM tokens**.
 
-| Platform | Installation | Scheduled Path (0 LLM) |
-| :--- | :--- | :--- |
-| 🦞 **OpenClaw** | `openclaw skills install @yuxin-qiao/freefm` | Gateway `--command-argv` |
-| 🪽 **Hermes** | `hermes skills install Yuxin-Qiao/FreeFM/skills/freefm` | Script `--no-agent` execution |
-| 🤖 **WorkBuddy** | Upload `freefm-workbuddy.zip` package | Local command execution |
-| ⚡ **Codex** | Copy `skills/freefm` to `~/.codex/skills/freefm` | OS cron / `codex sandbox` |
+<table>
+  <thead>
+    <tr>
+      <th align="left">Platform</th>
+      <th align="left">Install</th>
+      <th align="left">Scheduled Path (0 LLM Tokens)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="left"><img src="assets/platforms/openclaw.svg" width="20" height="20" align="absmiddle">&nbsp;<b>OpenClaw</b></td>
+      <td align="left"><code>openclaw skills install @yuxin-qiao/freefm</code></td>
+      <td align="left">Gateway <code>--command-argv</code></td>
+    </tr>
+    <tr>
+      <td align="left"><img src="assets/platforms/hermes.png" width="20" height="20" align="absmiddle">&nbsp;<b>Hermes</b></td>
+      <td align="left"><code>hermes skills install Yuxin-Qiao/FreeFM/skills/freefm</code></td>
+      <td align="left">Script <code>--no-agent</code></td>
+    </tr>
+    <tr>
+      <td align="left"><img src="assets/platforms/workbuddy.png" width="20" height="20" align="absmiddle">&nbsp;<b>WorkBuddy</b></td>
+      <td align="left">Upload <code>freefm-workbuddy.zip</code></td>
+      <td align="left">Local command capability</td>
+    </tr>
+    <tr>
+      <td align="left"><img src="assets/platforms/codex.svg" width="20" height="20" align="absmiddle">&nbsp;<b>Codex</b></td>
+      <td align="left">Copy <code>skills/freefm</code> to <code>~/.codex/skills/freefm</code></td>
+      <td align="left">OS cron / <code>codex sandbox</code></td>
+    </tr>
+  </tbody>
+</table>
 
 OpenClaw example:
 

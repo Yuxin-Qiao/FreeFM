@@ -92,27 +92,54 @@ MUSIC_U、session 和二维码 key。使用
 
 ## 命令
 
-| 命令 | 写入模式 | 用途描述 |
-| :--- | :--- | :--- |
-| `freefm auth` | 只读 | 网易云官方客户端扫码登录 |
-| `freefm preview` | 只读 | 展示计划追加 / 候选 / 跳过歌曲列表 |
-| `freefm sync` | 仅追加 | 将严格验证的免费原曲写入 `FreeFM · Auto` 歌单 |
-| `freefm status` | 只读 | 检查本机会话状态与账号信息 |
-| `freefm doctor` | 只读 | 诊断本机权限、数据目录与网易 API 结构 |
-| `freefm tui` | 交互式 | 引导式终端菜单（包含设置与命令触发） |
+| 命令 | 远端写入 | 用途 |
+|---|---:|---|
+| `freefm auth` | 否 | 官方客户端扫码登录 |
+| `freefm preview` | 否 | 展示加入、候选和跳过 |
+| `freefm sync` | 只追加 | 加入严格验证的免费原曲 |
+| `freefm status` | 否 | 检查 session 与账号 |
+| `freefm doctor` | 否 | 检查权限、状态和接口结构 |
+| `freefm tui` | 取决于选择 | 上述命令的交互入口 |
 
-`--json` 提供稳定机器输出，`--quiet` 成功时静默；`--data-dir PATH` 或 `FREEFM_HOME` 可隔离状态目录。
+`--json` 提供稳定机器输出，`--quiet` 成功时静默；`--data-dir PATH` 或
+`FREEFM_HOME` 可隔离状态目录。
 
 ## Agent 平台
 
-产品永远是 Rust 二进制；Skill 只负责安装和确定性调用。正常定时同步 **0 LLM token**。
+产品永远是 Rust 二进制；Skill 只负责安装和确定性调用。正常定时同步
+**0 LLM token**。
 
-| 平台 | 安装指令 / 方法 | 0 Token 无模型定时路径 |
-| :--- | :--- | :--- |
-| 🦞 **OpenClaw** | `openclaw skills install @yuxin-qiao/freefm` | Gateway `--command-argv` 确定性路径 |
-| 🪽 **Hermes** | `hermes skills install Yuxin-Qiao/FreeFM/skills/freefm` | `--no-agent` 脚本独立运行 |
-| 🤖 **WorkBuddy** | 上传 `freefm-workbuddy.zip` 技能包 | 本地 Command 能力确定性触发 |
-| ⚡ **Codex** | 复制至 `~/.codex/skills/freefm` | 系统 cron / `codex sandbox` |
+<table>
+  <thead>
+    <tr>
+      <th align="left">平台</th>
+      <th align="left">安装方法</th>
+      <th align="left">无模型定时路径 (0 LLM Token)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="left"><img src="assets/platforms/openclaw.svg" width="20" height="20" align="absmiddle">&nbsp;<b>OpenClaw</b></td>
+      <td align="left"><code>openclaw skills install @yuxin-qiao/freefm</code></td>
+      <td align="left">Gateway <code>--command-argv</code></td>
+    </tr>
+    <tr>
+      <td align="left"><img src="assets/platforms/hermes.png" width="20" height="20" align="absmiddle">&nbsp;<b>Hermes</b></td>
+      <td align="left"><code>hermes skills install Yuxin-Qiao/FreeFM/skills/freefm</code></td>
+      <td align="left"><code>--no-agent</code> 脚本路径</td>
+    </tr>
+    <tr>
+      <td align="left"><img src="assets/platforms/workbuddy.png" width="20" height="20" align="absmiddle">&nbsp;<b>WorkBuddy</b></td>
+      <td align="left">上传 <code>freefm-workbuddy.zip</code></td>
+      <td align="left">本地 Command 能力</td>
+    </tr>
+    <tr>
+      <td align="left"><img src="assets/platforms/codex.svg" width="20" height="20" align="absmiddle">&nbsp;<b>Codex</b></td>
+      <td align="left">复制至 <code>~/.codex/skills/freefm</code></td>
+      <td align="left">系统 cron / <code>codex sandbox</code></td>
+    </tr>
+  </tbody>
+</table>
 
 OpenClaw 定时示例：
 
