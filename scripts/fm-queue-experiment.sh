@@ -100,7 +100,7 @@ chmod 600 "$evidence" "$salt_file"
 
 echo
 echo "已记录（仅盐化哈希 + 你的回答，无歌曲名/ID）：$evidence"
-echo "本次 fetch：$batch_size 首，HTTP 请求 $http_requests 次；你的回答：$answer"
+echo "本次记录：$(jq -c '{batch_size, http_requests, official_queue_advanced, note}' "$evidence" | tail -1)"
 
 if [ -f "$launch_agent" ] && launchctl list 2>/dev/null | grep -q com.freefm.validation; then
   :
