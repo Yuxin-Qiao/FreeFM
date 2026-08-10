@@ -147,6 +147,7 @@ echo "[4/4] Verifying WorkBuddy release artifact packaging..."
 scripts/package-workbuddy.sh target/freefm-workbuddy.zip >/dev/null
 unzip -l target/freefm-workbuddy.zip | grep -q 'freefm/SKILL.md'
 unzip -l target/freefm-workbuddy.zip | grep -q 'freefm/scripts/freefm-sync.sh'
+unzip -l target/freefm-workbuddy.zip | grep -q 'freefm/scripts/freefm-audit.sh'
 echo "  ✓ WorkBuddy package verified."
 
 echo ""

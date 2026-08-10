@@ -137,6 +137,18 @@ The conservative default is every 6 hours so the playlist grows slowly;
 FreeFM itself has no built-in scheduler, so you may run it more or less often
 as you prefer.
 
+Pair the sync job with a low-frequency read-only audit so nobody has to
+remember to run it manually:
+
+```sh
+openclaw automations add --every 24h --name freefm-audit \
+  --command-argv '["/absolute/path/to/freefm","audit","--quiet"]' \
+  --no-deliver --timeout-seconds 120
+```
+
+`audit --quiet` is silent on success and exits 3 with a structured report when
+any saved track needs attention (became restricted, unavailable, or unknown).
+
 Build the WorkBuddy package with `scripts/package-workbuddy.sh`; import the ZIP
 under the Tencent WorkBuddy skill uploader. Do not enable unattended sync before
 the live-validation gate completes.

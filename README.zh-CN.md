@@ -134,6 +134,17 @@ openclaw automations add --every 6h --name freefm-sync \
 保守默认是每 6 小时一次，避免歌单过快膨胀；FreeFM 本身不内置 scheduler，你可以
 按需提高或降低频率。
 
+再配一个低频只读 audit 任务，历史歌曲变 VIP/不可用时无需你记得手动复查：
+
+```sh
+openclaw automations add --every 24h --name freefm-audit \
+  --command-argv '["/absolute/path/to/freefm","audit","--quiet"]' \
+  --no-deliver --timeout-seconds 120
+```
+
+`audit --quiet` 健康时静默，需要关注时以结构化输出和 exit 3 提示（变成受限、
+不可用或状态未知），且绝不修改歌单。
+
 WorkBuddy 包：`scripts/package-workbuddy.sh` 生成
 `target/freefm-workbuddy.zip`，在“专家·技能·连接器 → 添加技能 → 上传技能”导入。
 长期验证门槛完成前不要开启无人值守同步。

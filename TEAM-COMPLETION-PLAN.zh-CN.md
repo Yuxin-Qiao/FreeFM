@@ -17,6 +17,13 @@
 - `freefm audit` 只读复查 `FreeFM · Auto` 全部歌曲（still_free /
   became_restricted / unavailable / unknown），需要关注时以结构化输出和 exit 3 提示，
   不删除、不替换、不 repair。
+- `FUNCTIONAL-ACCEPTANCE.md` 是唯一验收记录：P0/P1 逐项黑盒验收，含
+  `BLOCKED_USER_ACTION`（真实账号主链、review 闭环、手工歌曲安全）和
+  `BLOCKED_EXTERNAL`（7 天观察）清单；`scripts/acceptance-live.sh` 用
+  `~/.freefm-acceptance/` 干净目录跑真实账号主链，只记录脱敏汇总。
+- 长期健康自动化：`sync` 之外新增每日 `freefm audit --quiet` 调度助手
+  （`skills/freefm/scripts/freefm-audit.sh` 与 `automation/hermes/freefm-audit.sh`
+  双份一致，WorkBuddy ZIP 与 CI 同步校验）。
 - owned playlist 名称和 owner 校验、重名 fail-closed、跨进程锁、远端复读、崩溃恢复和幂等。
 - fake transport、脱敏 fixture、分页/500 首分块、超时/5xx/登录失效/状态损坏等离线测试。
 - 真实 session 重启恢复、真实 owned playlist append、复读确认和第二次静默幂等。

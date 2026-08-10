@@ -88,6 +88,21 @@ Use `openclaw automations list` to obtain the job ID, then verify one run with
 Gateway scheduler without starting a model-backed turn. Do not replace
 `--command-argv` with an agent message.
 
+Long-term health needs a second, low-frequency job that runs the read-only
+audit so nobody has to remember it manually:
+
+```sh
+openclaw automations add --every 24h \
+  --name freefm-audit \
+  --command-argv '["/absolute/path/to/freefm","audit","--quiet"]' \
+  --no-deliver \
+  --timeout-seconds 120
+```
+
+`freefm audit --quiet` exits 0 silently when every saved track is still free
+and exits 3 with a structured report when attention is needed; the scheduler
+surfaces the non-zero exit without starting a model turn.
+
 ## Hermes no-agent automation
 
 Install the bundled fixed-command helper, then create a script-only cron:
@@ -125,6 +140,17 @@ hermes cron create "0 */6 * * *" \
 Use `hermes cron list` to obtain the job ID and `hermes cron run <job-id>` for
 one manual verification. `--no-agent` makes the script the job; empty stdout on
 success is silent and consumes no LLM tokens.
+
+Pair a daily read-only audit job so health regressions surface without manual
+effort:
+
+```sh
+install -m 755 "{baseDir}/scripts/freefm-audit.sh" "$HOME/.hermes/scripts/freefm-audit.sh"
+hermes cron create "0 3 * * *" \
+  --name freefm-audit \
+  --script freefm-audit.sh \
+  --no-agent
+```
 
 ## Tencent WorkBuddy local skill
 
