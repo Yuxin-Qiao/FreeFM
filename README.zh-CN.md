@@ -109,37 +109,12 @@ MUSIC_U、session 和二维码 key。使用
 产品永远是 Rust 二进制；Skill 只负责安装和确定性调用。正常定时同步
 **0 LLM token**。
 
-<table>
-  <thead>
-    <tr>
-      <th align="left">平台</th>
-      <th align="left">安装方法</th>
-      <th align="left">无模型定时路径 (0 LLM Token)</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="left"><img src="assets/platforms/openclaw.svg" width="20" height="20" align="absmiddle">&nbsp;<b>OpenClaw</b></td>
-      <td align="left"><code>openclaw skills install @yuxin-qiao/freefm</code></td>
-      <td align="left">Gateway <code>--command-argv</code></td>
-    </tr>
-    <tr>
-      <td align="left"><img src="assets/platforms/hermes.png" width="20" height="20" align="absmiddle">&nbsp;<b>Hermes</b></td>
-      <td align="left"><code>hermes skills install Yuxin-Qiao/FreeFM/skills/freefm</code></td>
-      <td align="left"><code>--no-agent</code> 脚本路径</td>
-    </tr>
-    <tr>
-      <td align="left"><img src="assets/platforms/workbuddy.png" width="20" height="20" align="absmiddle">&nbsp;<b>WorkBuddy</b></td>
-      <td align="left">上传 <code>freefm-workbuddy.zip</code></td>
-      <td align="left">本地 Command 能力</td>
-    </tr>
-    <tr>
-      <td align="left"><img src="assets/platforms/codex.svg" width="20" height="20" align="absmiddle">&nbsp;<b>Codex</b></td>
-      <td align="left">复制至 <code>~/.codex/skills/freefm</code></td>
-      <td align="left">系统 cron / <code>codex sandbox</code></td>
-    </tr>
-  </tbody>
-</table>
+| Logo | 平台 | 安装方法 | 无模型定时路径 (0 Token) |
+| :---: | :--- | :--- | :--- |
+| <img src="assets/platforms/openclaw.svg" width="32" height="32" alt="OpenClaw"> | **OpenClaw** | `openclaw skills install @yuxin-qiao/freefm` | Gateway `--command-argv` |
+| <img src="assets/platforms/hermes.png" width="32" height="32" alt="Hermes"> | **Hermes** | `hermes skills install Yuxin-Qiao/FreeFM/skills/freefm` | `--no-agent` 脚本路径 |
+| <img src="assets/platforms/workbuddy.png" width="32" height="32" alt="WorkBuddy"> | **WorkBuddy** | 上传 `freefm-workbuddy.zip` | 本地 Command 能力 |
+| <img src="assets/platforms/codex.svg" width="32" height="32" alt="Codex"> | **Codex** | 复制至 `~/.codex/skills/freefm` | 系统 cron / `codex sandbox` |
 
 OpenClaw 定时示例：
 

@@ -110,37 +110,12 @@ PATH` or `FREEFM_HOME` isolates the state root.
 The Rust binary is the product; platform integrations only install and invoke
 its deterministic command. Routine scheduled sync uses **zero LLM tokens**.
 
-<table>
-  <thead>
-    <tr>
-      <th align="left">Platform</th>
-      <th align="left">Install</th>
-      <th align="left">Scheduled Path (0 LLM Tokens)</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="left"><img src="assets/platforms/openclaw.svg" width="20" height="20" align="absmiddle">&nbsp;<b>OpenClaw</b></td>
-      <td align="left"><code>openclaw skills install @yuxin-qiao/freefm</code></td>
-      <td align="left">Gateway <code>--command-argv</code></td>
-    </tr>
-    <tr>
-      <td align="left"><img src="assets/platforms/hermes.png" width="20" height="20" align="absmiddle">&nbsp;<b>Hermes</b></td>
-      <td align="left"><code>hermes skills install Yuxin-Qiao/FreeFM/skills/freefm</code></td>
-      <td align="left">Script <code>--no-agent</code></td>
-    </tr>
-    <tr>
-      <td align="left"><img src="assets/platforms/workbuddy.png" width="20" height="20" align="absmiddle">&nbsp;<b>WorkBuddy</b></td>
-      <td align="left">Upload <code>freefm-workbuddy.zip</code></td>
-      <td align="left">Local command capability</td>
-    </tr>
-    <tr>
-      <td align="left"><img src="assets/platforms/codex.svg" width="20" height="20" align="absmiddle">&nbsp;<b>Codex</b></td>
-      <td align="left">Copy <code>skills/freefm</code> to <code>~/.codex/skills/freefm</code></td>
-      <td align="left">OS cron / <code>codex sandbox</code></td>
-    </tr>
-  </tbody>
-</table>
+| Logo | Platform | Installation | Scheduled Path (0 LLM) |
+| :---: | :--- | :--- | :--- |
+| <img src="assets/platforms/openclaw.svg" width="32" height="32" alt="OpenClaw"> | **OpenClaw** | `openclaw skills install @yuxin-qiao/freefm` | Gateway `--command-argv` |
+| <img src="assets/platforms/hermes.png" width="32" height="32" alt="Hermes"> | **Hermes** | `hermes skills install Yuxin-Qiao/FreeFM/skills/freefm` | Script `--no-agent` |
+| <img src="assets/platforms/workbuddy.png" width="32" height="32" alt="WorkBuddy"> | **WorkBuddy** | Upload `freefm-workbuddy.zip` | Local command capability |
+| <img src="assets/platforms/codex.svg" width="32" height="32" alt="Codex"> | **Codex** | Copy `skills/freefm` to `~/.codex/skills/freefm` | OS cron / `codex sandbox` |
 
 OpenClaw example:
 
