@@ -2,17 +2,18 @@
 
 # 🎧 FreeFM
 
-**把私人 FM 里真正免费可播的歌，安静地收进一张歌单。**
+**私人 FM 进去，一张干净可免费播放的歌单出来。**
 
 原生 Rust · 官方客户端扫码 · 严格免费判定 · 只追加不破坏
 
 [![CI](https://github.com/Yuxin-Qiao/FreeFM/actions/workflows/ci.yml/badge.svg)](https://github.com/Yuxin-Qiao/FreeFM/actions/workflows/ci.yml)
 [![Rust](https://img.shields.io/badge/Rust-native-DEA584?logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![平台](https://img.shields.io/badge/平台-macOS%20%7C%20Linux-222)](#安装)
+[![平台](https://img.shields.io/badge/平台-macOS%20%7C%20Linux-1E6FFF)](#安装)
 [![License](https://img.shields.io/badge/license-MIT-6E56CF)](LICENSE)
 [![ClawHub](https://img.shields.io/badge/ClawHub-FreeFM-13B8A6)](https://clawhub.ai/yuxin-qiao/skills/freefm)
+[![无 LLM](https://img.shields.io/badge/定时同步-0%20LLM%20token-22C55E)](#agent-平台)
 
-[快速开始](#快速开始) · [TUI](#tui) · [AI 帮装](#让-ai-帮你安装) ·
+[快速开始](#快速开始) · [让 AI 帮你安装](#让-ai-帮你安装) · [TUI](#tui) ·
 [Agent 平台](#agent-平台) · [English](README.md)
 
 </div>
@@ -20,52 +21,37 @@
 ![FreeFM：把私人 FM 收进一张干净的免费歌单](assets/freefm-hero.svg)
 
 > [!IMPORTANT]
-> FreeFM 是独立社区项目，不是网易云音乐官方产品。它不会破解 VIP、解灰、
-> 替换播放地址或下载音频。请只操作自己的账号。
+> 独立社区项目，非网易云官方产品；不破解 VIP、不替换播放地址、不下载音频，
+> 只操作自己的账号。接口未公开，可能随时变化。
 
-## FreeFM 做什么
+## 这是什么
 
-FreeFM 读取网易云私人 FM，只把“普通账号有明确正证据可以免费完整播放”的原歌曲
-追加到本人拥有的 `FreeFM · Auto`。字段缺失、格式异常或互相矛盾，一律跳过。
-搜索到的相似免费发行只在预览中展示；v0.1 不会用 Live、Remix、翻唱、Edit 或重录
-偷偷替换原曲。
+FreeFM 读取网易云私人 FM，只把**普通账号有明确正证据可免费完整播放**的原曲追加到
+你拥有的 `FreeFM · Auto` 歌单：
 
-`preview` 永远只读，只有 `sync` 写歌单；不删除、不重排。重复或并发运行按远端 ID
-去重。每次执行后立即退出，空闲时 0 进程、0 RAM、0 CPU。
-
-## 安装
-
-目前支持 macOS 和 Linux：
-
-```sh
-cargo install --git https://github.com/Yuxin-Qiao/FreeFM --locked
-freefm --version
-```
-
-Homebrew tap 会随首个稳定 tag 开放；实验 alpha 阶段请使用上面的可复现 Cargo 安装。
+- **严格正证据**：字段缺失、格式异常或互相矛盾一律跳过；相似免费发行只在预览展示，
+  v0.1 绝不自动替换。
+- **只追加**：`preview` 永远只读，只有 `sync` 写歌单；重复/并发按 ID 去重，不删除、
+  不重排、不碰手工加入的歌曲。
+- **零常驻**：单次执行后立即退出，空闲时 0 进程、0 RAM、0 CPU，无数据库、无 Web
+  服务、无 LLM。
 
 ## 快速开始
 
 ```sh
-freefm tui          # 推荐：终端交互界面
+cargo install --git https://github.com/Yuxin-Qiao/FreeFM --locked
 
-# 或直接使用命令
-freefm auth         # 用网易云官方客户端扫码
-freefm preview      # 只读预览
-freefm sync         # 只追加写入
-freefm sync --quiet # 定时任务；成功时无输出
+freefm tui           # 推荐：终端交互界面（含设置页）
+freefm auth          # 用网易云官方客户端扫码
+freefm preview       # 只读预览将加入 / 候选 / 跳过
+freefm sync          # 只追加写入
+freefm sync --quiet  # 定时任务路径；成功时无输出
 ```
 
-任何时候都不要把 Cookie、`MUSIC_U`、session 或二维码 key 发给 AI。凭证只保存在
-`~/.freefm/`，不会写日志；程序也不缓存音乐、封面、歌词或播放 URL。
+凭证只保存在 `~/.freefm/`，不写日志、不上传；不要把 Cookie、`MUSIC_U`、session 或
+二维码 key 发给任何人或 AI。Homebrew tap 随首个稳定 tag 开放。
 
-## TUI
-
-`freefm tui` 是原生 Rust 终端菜单，包含登录、预览、同步、状态和诊断。方向键或
-`j`/`k` 选择，`o` 切换文本/JSON，`q` 退出。同步必须明确按 `y`；Enter 默认取消。
-自动化固定调用非交互命令 `freefm sync --quiet`。
-
-## 让 AI 帮你安装
+### 让 AI 帮你安装
 
 把下面整段交给能操作终端的 AI：
 
@@ -81,35 +67,40 @@ MUSIC_U、session 和二维码 key。使用
 启动 Agent/LLM。遇到权限、登录或接口错误时只给脱敏提示，不要改 DNS、VPN、代理。
 ```
 
-根目录 [`AGENTS.md`](AGENTS.md) 用于约束“修改项目代码的 AI”；上面的 Prompt 用于
-普通用户安装，两者职责不同。
+## TUI
+
+`freefm tui` 是原生 Rust 终端菜单：登录、预览、同步、状态、诊断和**设置**。
+方向键或 `j`/`k` 选择，`o` 切换 JSON 输出，`q` 退出；设置页可切换静默模式（`u`），
+适合定时任务的偏好。同步必须明确按 `y`，Enter 默认取消。自动化固定使用
+`freefm sync --quiet`，不使用 TUI。
 
 ## 命令
 
 | 命令 | 远端写入 | 用途 |
 |---|---:|---|
-| `freefm auth` | 不写歌单 | 官方客户端扫码登录 |
+| `freefm auth` | 否 | 官方客户端扫码登录 |
 | `freefm preview` | 否 | 展示加入、候选和跳过 |
 | `freefm sync` | 只追加 | 加入严格验证的免费原曲 |
 | `freefm status` | 否 | 检查 session 与账号 |
 | `freefm doctor` | 否 | 检查权限、状态和接口结构 |
 | `freefm tui` | 取决于选择 | 上述命令的交互入口 |
 
-`--json` 提供稳定机器输出，`--quiet` 在成功时静默；`--data-dir PATH` 或
-`FREEFM_HOME` 可指定隔离状态目录。
+`--json` 提供稳定机器输出，`--quiet` 成功时静默；`--data-dir PATH` 或
+`FREEFM_HOME` 可隔离状态目录。
 
 ## Agent 平台
 
-真正的产品始终是 Rust 二进制；Skill 只负责安装和确定性调用。正常定时同步不需要
-Agent，也不消耗 LLM token。
+产品永远是 Rust 二进制；Skill 只负责安装和确定性调用。正常定时同步
+**0 LLM token**。
 
 | 平台 | 安装 | 无模型定时路径 | 已有证据 |
 |---|---|---|---|
-| 🦞 **OpenClaw** | `openclaw skills install @yuxin-qiao/freefm` | Gateway `--command-argv` | 隔离实跑退出 0、输出为空 |
-| 🪽 **Hermes** | `hermes skills install Yuxin-Qiao/FreeFM/skills/freefm` | `--no-agent` script | 实跑并通过 `SAFE / ALLOWED` |
-| 🤖 **腾讯 WorkBuddy** | 上传 `freefm-workbuddy.zip` | 本地命令能力 | 签名客户端已安装，登录后完成导入验证 |
+| <img src="assets/platforms/openclaw.svg" alt="OpenClaw" width="20" height="20"> OpenClaw | `openclaw skills install @yuxin-qiao/freefm` | Gateway `--command-argv` | 隔离实跑退出 0、输出为空 |
+| <img src="assets/platforms/hermes.png" alt="Hermes" width="20" height="20"> Hermes | `hermes skills install Yuxin-Qiao/FreeFM/skills/freefm` | `--no-agent` script | 实跑通过 `SAFE / ALLOWED` |
+| <img src="assets/platforms/workbuddy.png" alt="WorkBuddy" width="20" height="20"> WorkBuddy | 上传 `freefm-workbuddy.zip` | 本地命令能力 | 客户端签名已验证，真实导入待登录 |
+| <img src="assets/platforms/codex.svg" alt="Codex" width="20" height="20"> Codex | 复制 `skills/freefm` 到 `~/.codex/skills/freefm` | 系统 cron/launchd 或 `codex sandbox` | 结构兼容已验证；沙箱实跑待本机环境 |
 
-### 🦞 OpenClaw
+OpenClaw 定时示例：
 
 ```sh
 openclaw automations add --every 1h --name freefm-hourly \
@@ -117,60 +108,36 @@ openclaw automations add --every 1h --name freefm-hourly \
   --no-deliver --timeout-seconds 120
 ```
 
-隔离 Gateway 已真实执行该类型任务：退出码 0、stdout/stderr 为空、未请求消息投递，
-随后验证任务与 Gateway 均已关闭。
+WorkBuddy 包：`scripts/package-workbuddy.sh` 生成
+`target/freefm-workbuddy.zip`，在“专家·技能·连接器 → 添加技能 → 上传技能”导入。
+长期验证门槛完成前不要开启无人值守同步。
 
-### 🪽 Hermes
+Codex：`skills/freefm` 目录本身即 Codex skill（`name`/`description` frontmatter），
+安装后重启 Codex。注意 `codex exec` 和桌面端循环自动化会启动 Agent 回合（消耗
+token），只用于安装与诊断；零 token 周期同步仍由系统 cron/launchd 直接执行
+`freefm sync --quiet`，或经 `codex sandbox` 确定性运行（需允许网络与
+`~/.freefm` 写入的 permissions profile）。详见
+[`automation/codex/README.md`](automation/codex/README.md)。
 
-安装 Skill 后使用仓库提供的 `freefm-sync.sh` 创建 `--no-agent` script cron。
-Hermes 0.17 的实际运行记录已确认 `Mode: no_agent (script)` 与静默成功。
-
-### 🤖 腾讯 WorkBuddy
-
-```sh
-scripts/package-workbuddy.sh
-# target/freefm-workbuddy.zip
-```
-
-在“专家·技能·连接器 → 添加技能 → 上传技能”中选择 ZIP。包内只有 `SKILL.md` 和
-确定性 helper，结构遵循腾讯的[本地技能上传文档](https://cloud.tencent.com/document/product/1831/134432)。
-
-长期真实验证完成前，不要开启无人值守同步。
+平台标志仅用于指代对应产品，均为各自所有者的商标；此处以 nominative use 方式
+展示，不代表任何官方关联或背书。
 
 ## 安全边界
 
-FreeFM 只接受明确的 `vipType == 0`，且 privilege 与官方播放能力信息同时证明：
-fee 为数值 0、播放能力可用、内存中 URL 非空、没有免费试用标记。URL 不打印、
-不持久化、不下载、不替换。出现多个本人拥有的同名歌单会 fail-closed；本地锁避免
-并发创建和追加。
+只接受明确 `vipType == 0`；privilege 与播放能力信息同时证明 fee 为数值 0、可播放、
+URL 非空、无免费试用标记，URL 不打印不持久化。多个本人同名歌单 fail-closed；本地
+锁防止并发创建和追加。错误码：`login_required` 重新 `auth`；
+`ordinary_account_required` 账号不满足条件；`api_incompatible` 接口变化，暂停
+定时任务并提交脱敏 Issue；`concurrent_sync` 已有任务在跑。
 
-常见错误：`login_required` 请重新 `auth`；`ordinary_account_required` 表示账号不
-满足普通账号要求；`api_incompatible` 表示接口结构变化，应暂停定时任务并提交脱敏
-Issue；`concurrent_sync` 表示已有任务运行，等待结束即可。
+## 验证与文档
 
-## 卸载与数据
-
-先删除平台定时任务，再执行 `cargo uninstall freefm`。确认不再需要登录状态后删除
-`~/.freefm/`；怀疑泄漏时，先在网易云官方客户端撤销登录。
-
-## 当前验证状态
-
-- 普通账号扫码、进程重启 session 恢复、真实 append-only 写入与第二次幂等已验证；
-- 当前实测一次同步 19 个 HTTP 请求、4.02 秒、峰值 RSS 15,269,888 字节；
-- 被动读取可在不调用 play/skip/trash/scrobble 时得到变化批次，但 24 小时和 7 天门槛仍在运行；
-- session 服务端过期/撤销后的重新认证仍需单独验证；
-- WorkBuddy 客户端已安装并通过签名校验，实际导入等待用户本人登录；
-- 首个稳定 tag 与 Homebrew tap 以长期验证门槛通过为发布条件。
-
-完整接口、测试、性能、平台实跑及剩余限制见
-[`V01-VALIDATION.md`](V01-VALIDATION.md)。开发与安全规范见
-[`AGENTS.md`](AGENTS.md)、[`CONTRIBUTING.md`](CONTRIBUTING.md) 和
-[`SECURITY.md`](SECURITY.md)。
+真实接口、被动 FM 实验、session 重启、请求数、二进制大小/峰值 RSS、平台实跑与剩余
+限制见 [V01-VALIDATION.md](V01-VALIDATION.md)。开发规范见 [AGENTS.md](AGENTS.md)、
+[CONTRIBUTING.md](CONTRIBUTING.md)、[SECURITY.md](SECURITY.md)。
 
 <div align="center">
 
-**少做一点，但每一步都能解释、能复现、能安全退出。**
-
-[MIT License](LICENSE)
+**少做一点，但每一步都能解释、能复现、能安全退出。** · [MIT License](LICENSE)
 
 </div>

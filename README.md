@@ -8,59 +8,52 @@ Native Rust · official-client QR login · strict free-playability proof · appe
 
 [![CI](https://github.com/Yuxin-Qiao/FreeFM/actions/workflows/ci.yml/badge.svg)](https://github.com/Yuxin-Qiao/FreeFM/actions/workflows/ci.yml)
 [![Rust](https://img.shields.io/badge/Rust-native-DEA584?logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-222)](#install)
+[![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-1E6FFF)](#install)
 [![License](https://img.shields.io/badge/license-MIT-6E56CF)](LICENSE)
 [![ClawHub](https://img.shields.io/badge/ClawHub-FreeFM-13B8A6)](https://clawhub.ai/yuxin-qiao/skills/freefm)
+[![No LLM](https://img.shields.io/badge/scheduled%20sync-0%20LLM%20tokens-22C55E)](#agent-platforms)
 
-[简体中文](README.zh-CN.md) · [Install](#install) · [TUI](#tui) ·
-[Agent platforms](#agent-platforms) · [Validation](V01-VALIDATION.md)
+[简体中文](README.zh-CN.md) · [Quick start](#quick-start) · [Ask an AI](#ask-an-ai-to-install-it) ·
+[TUI](#tui) · [Agent platforms](#agent-platforms) · [Validation](V01-VALIDATION.md)
 
 </div>
 
 ![FreeFM — Private FM in, a clean playlist out](assets/freefm-hero.svg)
 
 > [!IMPORTANT]
-> FreeFM is an experimental community project, not an official NetEase Cloud
-> Music product. It never unlocks restricted audio, replaces playback URLs, or
-> downloads music. Use it only with your own account.
+> Experimental community project, not an official NetEase Cloud Music product.
+> Never unlocks restricted audio, replaces playback URLs, or downloads music.
+> Use it only with your own account; the service API may change without notice.
 
-## Why FreeFM
+## What it does
 
 FreeFM reads NetEase Private FM and append-only maintains your owned
-`FreeFM · Auto` playlist. A track is added only when an ordinary account has
-consistent positive evidence of full, free playback. Missing, malformed, or
-conflicting entitlement data is skipped. Similar free releases are preview-only
-in v0.1—Live, Remix, covers, edits, and re-recordings are never silently swapped.
+`FreeFM · Auto` playlist — only original tracks with **consistent positive
+evidence** that an ordinary account can play them free, in full:
 
-`preview` is read-only; only `sync` writes. Repeated and concurrent runs are
-ID-based and idempotent. FreeFM exits after each run, so idle cost is zero.
+- **Strict proof**: missing, malformed, or contradictory entitlement data is
+  skipped. Similar free releases are preview-only in v0.1; never auto-swapped.
+- **Append-only**: `preview` is read-only; only `sync` writes. Repeated and
+  concurrent runs dedupe by remote ID — no deletes, no reorders, no touching
+  tracks you added by hand.
+- **Zero resident cost**: one-shot CLI, exits after each run. No daemon, no
+  database, no web server, no LLM.
 
-## Install
-
-macOS and Linux currently install from source:
+## Quick start
 
 ```sh
 cargo install --git https://github.com/Yuxin-Qiao/FreeFM --locked
-freefm --version
+
+freefm tui           # guided terminal UI (includes settings page)
+freefm auth          # scan with the official NetEase client
+freefm preview       # read-only: additions / candidates / skips
+freefm sync          # append-only remote write
+freefm sync --quiet  # scheduler path; silent on success
 ```
 
-The Homebrew tap will be enabled with the first stable tagged release. Until
-then, the command above is the reproducible public-alpha path.
-
-## Start
-
-```sh
-freefm tui          # guided terminal UI
-
-# or explicit commands
-freefm auth         # scan in the official NetEase client
-freefm preview      # guaranteed read-only
-freefm sync         # append-only remote write
-freefm sync --quiet # scheduler path; silent on success
-```
-
-Never paste a cookie, `MUSIC_U`, session, or QR key into an AI chat. Credentials
-remain under `~/.freefm/`, are not logged, and music/audio is never cached.
+Credentials stay under `~/.freefm/` — never logged, never uploaded. Never paste a
+cookie, `MUSIC_U`, session, or QR key into an AI chat. The Homebrew tap opens
+with the first stable tag.
 
 ### Ask an AI to install it
 
@@ -71,45 +64,45 @@ or upload NetEase cookies, MUSIC_U, sessions, or QR keys. Install with
 `cargo install --git https://github.com/Yuxin-Qiao/FreeFM --locked`. Let me run
 `freefm auth` in a visible terminal and scan the QR myself. Run `preview` first;
 ask before `sync` or scheduler changes. Scheduled sync must execute
-`freefm sync --quiet` directly without an Agent/LLM turn.
+`freefm sync --quiet` directly without an Agent/LLM turn. On permission, login,
+or API errors, give redacted guidance only; never change DNS, VPN, or proxies.
 ```
 
 ## TUI
 
-`freefm tui` is a native Rust menu for auth, preview, sync, status, and doctor.
-Use arrows or `j`/`k`, `o` for human/JSON output, and `q` to exit. Sync requires
-an explicit `y`; Enter cancels. Automation must use the non-interactive CLI.
+`freefm tui` is a native Rust menu for auth, preview, sync, status, doctor, and
+**settings**. Use arrows or `j`/`k`, `o` toggles JSON output, `q` exits; the
+settings page toggles quiet mode (`u`) for scheduler-friendly output. Sync
+requires an explicit `y`; Enter cancels. Automation must use the non-interactive
+CLI, never the TUI.
 
 ## Commands
 
 | Command | Remote write | Purpose |
 |---|---:|---|
-| `freefm auth` | No playlist write | Official-client QR login |
-| `freefm preview` | No | Show additions, candidates, and skips |
+| `freefm auth` | No | Official-client QR login |
+| `freefm preview` | No | Show additions, candidates, skips |
 | `freefm sync` | Append only | Add strictly verified free originals |
 | `freefm status` | No | Check local session and account |
-| `freefm doctor` | No | Check permissions, state, login, and API shape |
+| `freefm doctor` | No | Check permissions, state, and API shape |
 | `freefm tui` | Selected action | Guided terminal interface |
 
-Use `--json` for stable machine output, `--quiet` for silent success, and
-`--data-dir PATH` or `FREEFM_HOME` for an isolated state root.
+`--json` for stable machine output, `--quiet` for silent success; `--data-dir
+PATH` or `FREEFM_HOME` isolates the state root.
 
 ## Agent platforms
 
-The Rust binary is the product. Platform integrations only install and invoke
-its deterministic command; routine sync needs zero LLM tokens.
+The Rust binary is the product; platform integrations only install and invoke
+its deterministic command. Routine scheduled sync uses **zero LLM tokens**.
 
 | Platform | Install | Model-free scheduled path | Evidence |
 |---|---|---|---|
-| 🦞 **OpenClaw** | `openclaw skills install @yuxin-qiao/freefm` | Gateway `--command-argv` | Isolated live run: exit 0, empty output |
-| 🪽 **Hermes** | `hermes skills install Yuxin-Qiao/FreeFM/skills/freefm` | `--no-agent` script | Live run `SAFE / ALLOWED` |
-| 🤖 **Tencent WorkBuddy** | Upload `freefm-workbuddy.zip` | Local command capability | Signed client installed; import validation pending login |
+| <img src="assets/platforms/openclaw.svg" alt="OpenClaw" width="20" height="20"> OpenClaw | `openclaw skills install @yuxin-qiao/freefm` | Gateway `--command-argv` | Isolated live run: exit 0, empty output |
+| <img src="assets/platforms/hermes.png" alt="Hermes" width="20" height="20"> Hermes | `hermes skills install Yuxin-Qiao/FreeFM/skills/freefm` | `--no-agent` script | Live run `SAFE / ALLOWED` |
+| <img src="assets/platforms/workbuddy.png" alt="WorkBuddy" width="20" height="20"> WorkBuddy | Upload `freefm-workbuddy.zip` | Local command capability | Signed client installed; import validation pending login |
+| <img src="assets/platforms/codex.svg" alt="Codex" width="20" height="20"> Codex | Copy `skills/freefm` to `~/.codex/skills/freefm` | OS cron/launchd or `codex sandbox` | Structure compatible; sandbox run pending local env |
 
-Build the WorkBuddy package with `scripts/package-workbuddy.sh`. It contains
-only `freefm/SKILL.md` and the deterministic helper; see Tencent's
-[local skill upload guide](https://cloud.tencent.com/document/product/1831/134432).
-
-OpenClaw uses this command payload:
+OpenClaw example:
 
 ```sh
 openclaw automations add --every 1h --name freefm-hourly \
@@ -117,33 +110,45 @@ openclaw automations add --every 1h --name freefm-hourly \
   --no-deliver --timeout-seconds 120
 ```
 
-Do not enable unattended sync until the live-validation gate is complete.
+Build the WorkBuddy package with `scripts/package-workbuddy.sh`; import the ZIP
+under the Tencent WorkBuddy skill uploader. Do not enable unattended sync before
+the live-validation gate completes.
 
-## Safety and evidence
+Codex: the `skills/freefm` folder is itself a Codex skill (`name`/`description`
+frontmatter); install it and restart Codex. `codex exec` and desktop recurring
+automations start an Agent turn and consume tokens — use them for setup and
+troubleshooting only. Zero-token cycles keep running the binary directly via
+the OS scheduler (`freefm sync --quiet`) or the deterministic sandbox runner
+`codex sandbox -- freefm sync --quiet` (permissions profile must allow network
+and `~/.freefm` writes). See
+[`automation/codex/README.md`](automation/codex/README.md).
 
-FreeFM requires explicit `vipType=0` and consistent privilege/player evidence:
+Platform logos are shown nominatively to identify the corresponding products;
+they remain trademarks of their respective owners and imply no affiliation or
+endorsement.
+
+## Safety
+
+FreeFM requires explicit `vipType == 0` and consistent privilege/player evidence:
 numeric fee zero, usable playback capability, a non-empty in-memory URL, and no
 trial marker. The URL is never printed, persisted, downloaded, or substituted.
+Ambiguous playlist targets fail closed; a local lock prevents concurrent
+creation and appends. Error codes: `login_required` → re-run `auth`;
+`ordinary_account_required` → account does not qualify;
+`api_incompatible` → API changed, pause scheduling and file a redacted issue;
+`concurrent_sync` → another run is in progress.
 
-The exact endpoints, real HTTP count, session restart, passive-FM experiment,
-binary size/RSS, platform proofs, and remaining gates are recorded in
-[V01-VALIDATION.md](V01-VALIDATION.md). CI uses fake transports and redacted
-fixtures only; real-account requests are forbidden.
+## Validation and docs
 
-## Development
-
-```sh
-cargo fmt --all -- --check
-cargo test --all-targets
-cargo clippy --all-targets -- -D warnings
-cargo build --release
-```
-
-Read [AGENTS.md](AGENTS.md), [CONTRIBUTING.md](CONTRIBUTING.md), and
-[SECURITY.md](SECURITY.md) before changing protocol or credential code.
+Live endpoints, the passive-FM experiment, session restart, HTTP counts, binary
+size / peak RSS, platform proofs, and remaining gates are in
+[V01-VALIDATION.md](V01-VALIDATION.md). Contributor and security guidance:
+[AGENTS.md](AGENTS.md), [CONTRIBUTING.md](CONTRIBUTING.md),
+[SECURITY.md](SECURITY.md).
 
 <div align="center">
 
-Independent open source under the [MIT License](LICENSE).
+**Do less, but make every step explainable, reproducible, and safe to exit.**
+· [MIT License](LICENSE)
 
 </div>

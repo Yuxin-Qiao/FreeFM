@@ -14,6 +14,7 @@ use std::path::Path;
 pub(crate) struct Choice {
     pub(crate) command: &'static str,
     pub(crate) json: bool,
+    pub(crate) quiet: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -22,6 +23,7 @@ struct MenuItem {
     command: Option<&'static str>,
     description: &'static str,
     writes_remote: bool,
+    opens_settings: bool,
 }
 
 const ITEMS: &[MenuItem] = &[
@@ -30,36 +32,49 @@ const ITEMS: &[MenuItem] = &[
         command: Some("auth"),
         description: "使用网易云官方客户端扫码，凭证只保存在本机",
         writes_remote: false,
+        opens_settings: false,
     },
     MenuItem {
         title: "预览本次推荐",
         command: Some("preview"),
         description: "只读检查将加入、候选和跳过的歌曲",
         writes_remote: false,
+        opens_settings: false,
     },
     MenuItem {
         title: "同步到 FreeFM · Auto",
         command: Some("sync"),
         description: "仅追加严格确认可免费完整播放的原歌曲",
         writes_remote: true,
+        opens_settings: false,
     },
     MenuItem {
         title: "查看登录状态",
         command: Some("status"),
         description: "检查本机会话与普通账号状态",
         writes_remote: false,
+        opens_settings: false,
     },
     MenuItem {
         title: "运行诊断",
         command: Some("doctor"),
         description: "检查目录、权限、会话与接口可用性",
         writes_remote: false,
+        opens_settings: false,
+    },
+    MenuItem {
+        title: "设置",
+        command: None,
+        description: "切换输出格式、静默模式；只改本地偏好",
+        writes_remote: false,
+        opens_settings: true,
     },
     MenuItem {
         title: "退出",
         command: None,
         description: "不执行任何操作",
         writes_remote: false,
+        opens_settings: false,
     },
 ];
 
@@ -87,9 +102,10 @@ pub(crate) fn choose(initial_json: bool, data_dir: Option<&Path>) -> io::Result<
     let _guard = TerminalGuard::enter()?;
     let mut selected = 0;
     let mut json = initial_json;
+    let mut quiet = false;
 
     loop {
-        draw(selected, json, data_dir, false)?;
+        draw(selected, json, quiet, data_dir, false)?;
         let Event::Key(key) = event::read()? else {
             continue;
         };
@@ -103,13 +119,21 @@ pub(crate) fn choose(initial_json: bool, data_dir: Option<&Path>) -> io::Result<
             KeyCode::Esc | KeyCode::Char('q') => return Ok(None),
             KeyCode::Enter => {
                 let item = ITEMS[selected];
+                if item.opens_settings {
+                    (json, quiet) = settings_screen(json, quiet, data_dir)?;
+                    continue;
+                }
                 let Some(command) = item.command else {
                     return Ok(None);
                 };
-                if item.writes_remote && !confirm_sync(selected, json, data_dir)? {
+                if item.writes_remote && !confirm_sync(selected, json, quiet, data_dir)? {
                     continue;
                 }
-                return Ok(Some(Choice { command, json }));
+                return Ok(Some(Choice {
+                    command,
+                    json,
+                    quiet,
+                }));
             }
             _ => {}
         }
@@ -124,9 +148,14 @@ fn next_index(index: usize) -> usize {
     (index + 1) % ITEMS.len()
 }
 
-fn confirm_sync(selected: usize, json: bool, data_dir: Option<&Path>) -> io::Result<bool> {
+fn confirm_sync(
+    selected: usize,
+    json: bool,
+    quiet: bool,
+    data_dir: Option<&Path>,
+) -> io::Result<bool> {
     loop {
-        draw(selected, json, data_dir, true)?;
+        draw(selected, json, quiet, data_dir, true)?;
         let Event::Key(key) = event::read()? else {
             continue;
         };
@@ -139,6 +168,30 @@ fn confirm_sync(selected: usize, json: bool, data_dir: Option<&Path>) -> io::Res
     }
 }
 
+fn settings_screen(
+    initial_json: bool,
+    initial_quiet: bool,
+    data_dir: Option<&Path>,
+) -> io::Result<(bool, bool)> {
+    let mut json = initial_json;
+    let mut quiet = initial_quiet;
+    loop {
+        draw_settings(json, quiet, data_dir)?;
+        let Event::Key(key) = event::read()? else {
+            continue;
+        };
+        if key.kind != KeyEventKind::Press {
+            continue;
+        }
+        match key.code {
+            KeyCode::Char('o') | KeyCode::Char('j') | KeyCode::Char('k') => json = !json,
+            KeyCode::Char('u') | KeyCode::Char('s') => quiet = !quiet,
+            KeyCode::Esc | KeyCode::Char('q') | KeyCode::Enter => return Ok((json, quiet)),
+            _ => {}
+        }
+    }
+}
+
 fn sync_confirmation(key: KeyCode) -> Option<bool> {
     match key {
         KeyCode::Char('y') | KeyCode::Char('Y') => Some(true),
@@ -147,7 +200,13 @@ fn sync_confirmation(key: KeyCode) -> Option<bool> {
     }
 }
 
-fn draw(selected: usize, json: bool, data_dir: Option<&Path>, confirm: bool) -> io::Result<()> {
+fn draw(
+    selected: usize,
+    json: bool,
+    quiet: bool,
+    data_dir: Option<&Path>,
+    confirm: bool,
+) -> io::Result<()> {
     let mut output = io::stdout();
     let (width, _) = terminal::size().unwrap_or((80, 24));
     let divider = "─".repeat(usize::from(width.clamp(36, 88)));
@@ -196,8 +255,9 @@ fn draw(selected: usize, json: bool, data_dir: Option<&Path>, confirm: bool) -> 
         Print("\r\n"),
         SetForegroundColor(Color::DarkGrey),
         Print(format!(
-            "  输出：{}   数据目录：{}\r\n",
+            "  输出：{}   静默：{}   数据目录：{}\r\n",
             if json { "JSON" } else { "易读文本" },
+            if quiet { "开" } else { "关" },
             data_dir
         )),
         ResetColor
@@ -214,6 +274,51 @@ fn draw(selected: usize, json: bool, data_dir: Option<&Path>, confirm: bool) -> 
             ResetColor
         )?;
     }
+    output.flush()
+}
+
+fn draw_settings(json: bool, quiet: bool, data_dir: Option<&Path>) -> io::Result<()> {
+    let mut output = io::stdout();
+    let (width, _) = terminal::size().unwrap_or((80, 24));
+    let divider = "─".repeat(usize::from(width.clamp(36, 88)));
+    let data_dir = data_dir
+        .map(|path| path.display().to_string())
+        .unwrap_or_else(|| "~/.freefm".to_string());
+    queue!(output, MoveTo(0, 0), Clear(ClearType::All))?;
+    queue!(
+        output,
+        SetForegroundColor(Color::Cyan),
+        SetAttribute(Attribute::Bold),
+        Print("  设置（只改本地偏好，不改变安全边界）\r\n"),
+        ResetColor,
+        SetAttribute(Attribute::Reset),
+        SetForegroundColor(Color::DarkGrey),
+        Print(format!("  {divider}\r\n")),
+        ResetColor,
+        Print("  o 输出格式   u 静默模式   Esc/Enter 返回\r\n\r\n")
+    )?;
+    queue!(
+        output,
+        SetForegroundColor(if json { Color::Cyan } else { Color::DarkGrey }),
+        Print(format!(
+            "  输出格式：{}\r\n",
+            if json {
+                "JSON（机器可读）"
+            } else {
+                "易读文本"
+            }
+        )),
+        ResetColor,
+        SetForegroundColor(if quiet { Color::Cyan } else { Color::DarkGrey }),
+        Print(format!(
+            "  静默模式：{}（成功时无输出，适合定时任务）\r\n",
+            if quiet { "开" } else { "关" }
+        )),
+        ResetColor,
+        SetForegroundColor(Color::DarkGrey),
+        Print(format!("  数据目录：{}\r\n", data_dir)),
+        ResetColor
+    )?;
     output.flush()
 }
 
@@ -244,5 +349,15 @@ mod tests {
         assert_eq!(sync_confirmation(KeyCode::Enter), Some(false));
         assert_eq!(sync_confirmation(KeyCode::Esc), Some(false));
         assert_eq!(sync_confirmation(KeyCode::Char('x')), None);
+    }
+
+    #[test]
+    fn settings_item_is_read_only() {
+        let settings = ITEMS
+            .iter()
+            .find(|item| item.opens_settings)
+            .expect("settings item exists");
+        assert_eq!(settings.command, None);
+        assert!(!settings.writes_remote);
     }
 }

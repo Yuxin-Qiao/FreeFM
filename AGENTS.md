@@ -48,9 +48,16 @@ git diff --check
 
 If a platform skill changes, also run the Skill validator, compare the two
 Hermes helper copies, validate shell syntax, build the WorkBuddy package, and
-inspect its file list. Keep required technical identifiers lowercase:
+inspect its file list. The same `skills/freefm` folder is the Codex skill;
+keep its `name`/`description` frontmatter and `automation/codex/README.md` in
+sync when platform guidance changes. Keep required technical identifiers lowercase:
 `freefm` for the binary, crate, directories, and skill slug; use `FreeFM` for
 human-facing product text.
+
+GitHub Actions refs must be pinned to commit SHAs, not tags or moving branches.
+Run `scripts/pin-actions.sh` on a machine with network access, commit the
+rewritten workflows, and keep the MSRV job (Cargo.toml `rust-version`) in sync
+with the minimum Rust version CI actually tests.
 
 ## Scope discipline
 

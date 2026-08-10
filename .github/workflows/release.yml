@@ -6,7 +6,7 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -14,14 +14,18 @@ concurrency:
 
 jobs:
   binary:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --all-targets
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
+      - run: cargo test --all-targets --locked
       - run: cargo build --release --locked
       - name: Package native binary
         shell: bash
@@ -40,29 +44,57 @@ jobs:
             shasum -a 256 "dist/${name}.tar.gz" > "dist/${name}.tar.gz.sha256"
           fi
           rm -rf "dist/${name}"
-      - uses: actions/upload-artifact@v4
+      - name: Attest binary and checksum
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: dist/*
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: freefm-${{ matrix.os }}
           path: dist/*
           if-no-files-found: error
 
   workbuddy:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Package WorkBuddy skill
         run: scripts/package-workbuddy.sh dist/freefm-workbuddy.zip
-      - uses: actions/upload-artifact@v4
+      - name: Attest WorkBuddy package
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: dist/freefm-workbuddy.zip
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: freefm-workbuddy
           path: dist/freefm-workbuddy.zip
           if-no-files-found: error
 
-  publish:
-    needs: [binary, workbuddy]
+  sbom:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@9f7302141466aa6482940f15371237e9d9f4c34a # v0.19.0
+        with:
+          path: ./
+          format: cyclonedx-json
+          output-file: freefm-sbom.cdx.json
+          artifact-name: freefm-sbom
+
+  publish:
+    permissions:
+      contents: write
+    needs: [binary, workbuddy, sbom]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: dist
           merge-multiple: true

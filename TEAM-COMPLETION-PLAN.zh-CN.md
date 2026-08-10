@@ -1,253 +1,306 @@
-# FreeFM v0.1 完成与发布执行方案
+# FreeFM v0.1 待完成清单与发布执行计划
 
-日期：2026-08-09（Asia/Shanghai）
+更新：2026-08-10（Asia/Shanghai）
+适用仓库：`Yuxin-Qiao/FreeFM`
+目标：补齐长期验证、平台实机与供应链门禁，发布可复核的 `v0.1.0`，最后再开启无人值守同步。
 
-## 1. 当前结论与目标状态
+## 0. 当前基线
 
-当前 FreeFM 已经完成安全的真实 append 闭环，但在 24 小时被动 FM 与
-session 跨天/撤销证据补齐前，仍不宣称“完整达到原始产品目标”，也不启动
-Hermes gateway 做长期无人值守运行。
+### 已完成，不要重复实现
 
-已经完成并作为本方案基线保留：
+- Native Rust CLI/TUI；产品运行时不是 Skill，也不依赖 Agent、Node、Python、Docker、数据库或 Web 服务。
+- `auth`、`preview`、`sync`、`status`、`doctor`、`tui`；`preview` 只读，`sync` 只追加。
+- 仅接受明确 `vipType == 0` 的普通账号；免费判定缺失、异常或矛盾时 fail-closed。
+- 受限歌曲的免费同曲搜索结果仅 `candidate_only`，v0.1 不自动替换。
+- owned playlist 名称和 owner 校验、重名 fail-closed、跨进程锁、远端复读、崩溃恢复和幂等。
+- fake transport、脱敏 fixture、分页/500 首分块、超时/5xx/登录失效/状态损坏等离线测试。
+- 真实 session 重启恢复、真实 owned playlist append、复读确认和第二次静默幂等。
+- OpenClaw deterministic command job 与 Hermes `no_agent` 手动周期已证明不启动 LLM；Hermes 周期仍暂停。
+- Codex Skill 结构、WorkBuddy ZIP、TUI 设置页、Rust 模块拆分、MSRV 和四个平台官方彩色图标已在本地完成。
 
-- native Rust 单文件 CLI，包含 `auth`、`preview`、`sync`、`status`、`doctor`；
-- 普通非 VIP 账号强制校验；
-- privilege 与 player probe 的严格正证据免费判定；
-- 受限歌曲的搜索候选仅在 preview 展示，不自动替换；
-- owned playlist 唯一性校验、同步前远端复核、append-only 去重；
-- Unix `flock` 并发锁、原子 state 写入；
-- `RemoteApi` fake seam、31 个通过的离线测试、CI、MIT License、RustSec 和脱敏规则；
-- release binary 为 1,802,256 bytes；最终真实 append sync 为 4.02 秒、
-  峰值 RSS 15,269,888 bytes、19 个实际 HTTP 请求；
-- 仅持久化 `MUSIC_U` 的 session 已通过重启、读取、append 与复读验证；
-- Hermes no-agent 手动调度已证明 0 LLM 与空输出；job 已暂停，gateway 暂未启动。
-- `com.freefm.validation` LaunchAgent 已启动，每小时只读采样；Codex heartbeat
-  每 6 小时检查一次，达到 7 天后自动关闭验证任务并执行最终收口。
+### 2026-08-10 实时基线
 
-本轮团队目标是交付一个可发布的 v0.1，并用可复核证据回答：
+- 本地门禁：35 项测试通过，另有 1 个子进程辅助测试 ignored；format、Clippy、release build、`git diff --check` 全绿。
+- RustSec：1,198 条 advisory，188 个锁定依赖，无漏洞报告。
+- gitleaks：当前工作区无泄漏发现。
+- arm64 release binary：1,854,240 bytes；SHA-256
+  `aadf7af20bda4301a9aceacf3f3e2c7c26b94809c8be4423afc327cee4db5979`。
+- session 观察：13/13 成功、13/13 authenticated、13/13 `vipType=0`，无失败。
+- 被动 FM：15 批、45 个盐化 track hash、15 个盐化 batch hash，全部唯一，无失败。
+- LaunchAgent `com.freefm.validation` 每小时只执行 `status` 和 `preview`，不执行
+  `sync`、play、skip、trash 或 scrobble。
+- GitHub `main` 最新已提交版本 CI 绿色，但当前模块拆分、Codex、图标和文档改动尚未提交；旧 CI 不能作为当前工作区证明。
+- 尚无 `v0.1.0` tag、GitHub Release 或 Homebrew Formula。
 
-1. 最终安全版本是否真实创建/复用 owned playlist、追加免费原曲并在第二次运行保持幂等；
-2. Private FM 在无播放、skip、trash、scrobble 时，跨小时/跨天被动读取是否仍产生新推荐；
-3. session 能否跨进程、跨天恢复，失效时是否稳定 fail-closed；
-4. 实际 HTTP 请求数、耗时、RSS、binary/state 大小是多少；
-5. OpenClaw/Hermes 的正常定时周期是否确实不启动 Agent/LLM，token 数为 0；
-6. 网易云是否提供足够强的同录音身份字段；没有则明确把自动免费同曲替换延期，而不是降低安全门槛。
+### 时间门槛
 
-## 2. 已锁定的产品决策
+- +24h：2026-08-10 23:21:34（Asia/Shanghai）。
+- +7d：2026-08-16 23:21:34（Asia/Shanghai）。
+- +7d 全部门禁完成前，Hermes `freefm-hourly` 保持暂停，不建立其他周期 `sync`。
 
-- v0.1 支持 macOS 与 Linux；不要声称支持 Windows。当前非 Unix 锁实现没有有效互斥，团队应删除该 fallback，并在非 Unix 构建时明确报 unsupported，或在未来单独实现跨平台锁。
-- v0.1 默认只自动加入“原歌曲本身严格免费”的歌曲。
-- 搜索到的免费同曲候选保持 `candidate_only`；只有通过第 7 节身份门槛后才允许启用自动替换。
-- FreeFM 仍是 run-once CLI，不新增 scheduler、daemon、数据库、Web Server 或后台进程。
-- CI 永远不使用真实账号、不访问网易云、不保存 session。
-- `--quiet` 与 `--json` 同时出现时，quiet 优先：成功无输出，失败输出结构化错误；补测试并写入 README。
-- 稳定退出码：`0` 成功，`1` 运行/API/人工处理错误，`2` 参数错误。
-- 在本方案所有 P0 门槛通过前，不启用周期 `sync`。
+## 1. 角色与交付规则
 
-## 3. P0：离线可靠性与仓库基线
+建议指定四名 owner；一人可兼任，但每个证据必须有第二人复核。
 
-负责人：Rust/测试工程师。该阶段不得进行远端写入。
+| 角色 | 责任 |
+|---|---|
+| Release owner | 排期、门禁、提交、tag、Release、Homebrew、最终 Go/No-Go |
+| Rust owner | 当前 diff 复核、测试、CI、MSRV、供应链配置 |
+| Validation owner | +24h/+7d 脱敏统计、session 撤销/重扫、性能与大小 |
+| Platform owner | OpenClaw、Hermes、Codex、WorkBuddy 实机与商店材料 |
 
-### 实现任务
+统一规则：
 
-1. 扩展 `RemoteApi` 脚本化 fake，使每个方法都能排队返回成功或指定错误，并记录严格调用顺序。
-2. 增加完整流程测试：
-   - HTTP timeout、5xx、非 JSON、缺字段、未知 code；
-   - 登录失效必须在 Private FM 调用前停止；
-   - `preview` 的 create/add 调用数始终为 0；
-   - 首次 sync、第二次 sync、远端已有相同 track、超过 500 首 track；
-   - subscribed 同名歌单、无 owner、多个 owned 同名歌单、缓存歌单改名/换 owner；
-   - create 成功后失败、add 成功后失败、复读失败、state 保存前失败，下一次运行不得重复建歌单或重复添加；
-   - 两个并发进程只有一个获得锁；锁持有进程异常退出后，新进程可以继续；
-   - `--json`、`--quiet`、组合参数、stdout/stderr、退出码；
-   - 所有错误输出不包含 cookie 值、QR key、URL、Authorization 或 session 内容。
-3. 将非 Unix 行为改为显式 unsupported；CI 保留 Ubuntu，增加 macOS job 验证 `flock` 路径。
-4. 在 CI 增加 RustSec 审计，例如 `rustsec/audit-check@v2`；不把 `cargo-audit` 加入产品运行依赖。
-5. 检查 session 最小化：
-   - 在隔离 `--data-dir` 中先测试仅保存 `MUSIC_U`；
-   - 若状态、FM、owned playlist 读取和 append 都正常，仅持久化该 cookie；
-   - 若失败，一次只增加一个实际必需 cookie并记录原因；
-   - 不在当前有效 session 上直接做破坏性试验。
-6. QR 仅在终端渲染，不再生成 SVG/PNG 文件，因此所有退出路径均无 QR 文件残留。
-7. 明确仓库基线：当前所有项目文件仍未跟踪。确认 `.freefm/`、`target/`、实验输出、QR 文件、`.DS_Store` 被忽略并通过 secret scan 后，再创建初始提交。
+1. 不输出、复制、上传或提交 Cookie、`MUSIC_U`、session、QR key、原始歌曲/歌单 ID、标题、播放 URL或完整响应。
+2. 自动化证据只允许时间戳、批次数、盐化去重数、认证布尔值、`vipType`、请求数、文件大小和失败类型。
+3. CI 不访问网易云，不使用真实账号；真实验证只能由账号持有人扫码。
+4. 任一登录失效、API 结构异常、owner 歧义、免费证据矛盾或泄漏扫描失败，立即 No-Go，并保持所有周期同步暂停。
+5. 不修改 macOS DNS、VPN、代理或 Cargo 镜像来绕过环境问题。
+6. 每项任务完成后，把“命令、退出码、脱敏摘要、commit/tag SHA”写入 `V01-VALIDATION.md`；不只写“已验证”。
 
-### P0 验收
+## 2. P0 发布阻断项
 
-- `cargo fmt --all -- --check`、`cargo test --all-targets`、Clippy、release build、RustSec、secret scan 全绿；
-- 测试数和覆盖场景写入 `V01-VALIDATION.md`，不得只写“已通过”；
-- 两进程锁与四个 crash window 均有自动化测试；
-- 最小 cookie 集有隔离实测证据；
-- Git 初始提交不包含任何凭证、账号 ID、真实歌单 ID或私人听歌数据。
+### P0-1 当前工作区收口
 
-## 4. P0：实际 HTTP 计数与协议证据
+负责人：Rust owner；复核：Release owner。
+现在即可执行。
 
-负责人：协议工程师。生产依赖继续使用 `netease-music = 0.1.1`，不要先重写协议。
+- [x] 逐文件审查当前 diff，确认模块拆分没有改变协议、免费判定、append-only 或输出契约。
+- [x] 确认 `src/main.rs` 只保留 CLI/TUI 入口，业务逻辑位于 `lib.rs` 及模块中。
+- [x] 确认 README 中四个平台使用 `assets/platforms/` 的官方彩色标志，来源和许可证可说明。
+- [x] 把中文 WorkBuddy 状态改成“客户端签名已验证，真实导入待登录”，不得暗示已上架。
+- [x] 删除或忽略工作树中的 `.DS_Store`；确认任何 `.DS_Store` 均未跟踪。
+- [x] 更新 `V01-VALIDATION.md` 中过时的测试数、依赖数和 binary 数据。
+- [x] 运行 `scripts/package-workbuddy.sh`，核对 ZIP 仅包含允许的 Skill 文件和 helper。
 
-### 实现方式
+验收证据：`git diff --stat`、`git status --short`、包内容清单、第二人 review 记录。
+通过标准：没有用户 WIP 被覆盖；没有凭证、验证目录、构建产物或 `.DS_Store` 进入待提交列表。
 
-1. 固定 `netease-music = 0.1.1`，审计其所有公开调用：每次调用发送一次
-   HTTP；`playlist_track_all` 额外按每 500 个 track ID 发送一次 song-detail
-   请求。生产代码据此分别输出 `client_calls` 与 `http_requests`。
-2. 用 fake 对 0/1/500/501/大于 500 首分块行为做确定性计数测试；真实 sync
-   同时记录两个计数，且不得记录 endpoint body、header、cookie 或响应正文。
-3. 每条记录只包含：递增序号、逻辑 endpoint 名、weapi/eapi/linuxapi、HTTP 状态、耗时；不得记录 URL query、body、header、cookie 或响应正文。
-4. 用 instrumented build 分别测量：
-   - `status`；
-   - 无缓存 playlist 的 preview；
-   - 有缓存 playlist 的 preview；
-   - sync 无新增；
-   - sync 有 1 首新增；
-   - playlist 超过 500 首时的详情分块。
-5. 将生产 JSON 中的 `client_calls` 保留为包装层指标，`http_requests` 仅在
-   固定 crate 版本及已审计组合方法下代表实际请求数；升级 crate 时必须重审。
-6. 对照当前 `netease-music`、`ncm-api-rs` 和活跃 NeteaseCloudMusicApi 源码，记录 endpoint、加密模式、参数形状和差异；社区实现只作参考，最终结论必须来自本次真实响应。
+### P0-2 +24 小时被动 FM 结论
 
-### 验收
+负责人：Validation owner。
+最早执行时间：2026-08-10 23:21:34（Asia/Shanghai）。
 
-- 给出每种场景的真实 HTTP 总数与 endpoint 序列；
-- 同一场景至少运行 3 次，报告范围和中位数；
-- 证据不含账号数据或完整响应；
-- 若 instrumented 副本行为与生产 crate 不一致，停止发布并先解释差异。
+- [ ] 读取 `~/.freefm-validation/started-at`、`session.jsonl`、`passive.jsonl` 和可选 `failures.jsonl`。
+- [ ] 只聚合首末时间、样本数、成功数、authenticated 数、`vipType=0` 数、盐化 batch/track 总数与去重数、HTTP 请求数范围和失败类型。
+- [ ] 确认 LaunchAgent 安装脚本和实际运行脚本只包含 `status` 与 `preview`。
+- [ ] 在 `V01-VALIDATION.md` 记录 +24h 结论，并明确“读取 FM 可能由服务端视为消费批次”仍未知。
+- [ ] 不停止 LaunchAgent；继续观察到 +7d。
 
-## 5. P0：最终安全版本真实闭环
+通过标准：至少覆盖完整 24 小时；无写接口；后续批次仍有新的盐化 track，或如实记录停滞限制。
+失败处理：出现认证失败、异常字段或证据文件结构变化时，记录稳定失败类型，暂停一切同步，不删除失败证据。
 
-负责人：一名能够扫码的验证人员和一名复核人员。使用普通非 VIP 账号，禁止粘贴 cookie。
+### P0-3 +7 天 session 与证据大小
 
-### 执行顺序
+负责人：Validation owner；复核：Release owner。
+最早执行时间：2026-08-16 23:21:34（Asia/Shanghai）。
 
-1. 构建最终 release binary，并复制到固定验证路径；验证期间不再改代码。
-2. 使用隔离目录执行 `freefm auth`，本人通过官方客户端扫码。
-3. 退出进程后执行 `status --json`，确认 `authenticated=true`、`vipType=0`。
-4. 执行 `preview --json`：
-   - 人工复核所有 `add_original` 均具有完整严格免费证据；
-   - `candidate_only` 不得出现在 `would_add_ids`；
-   - 记录脱敏摘要后立即删除原始 preview 输出。
-5. 执行第一次 `sync --quiet`：成功必须 exit 0 且 stdout/stderr 均为 0 bytes。
-6. 通过 owned playlist 复读确认新增 ID 存在；确认没有删除、重排或修改原有歌曲。
-7. 立即执行第二次 `sync --quiet`；确认没有再次调用 add，歌单 track count 不因重复项增长。
-8. 将 session/state 权限、大小、修改时间和 release SHA-256 写入验证报告；不写内容。
+- [ ] 汇总 7 天 session 有效率、普通账号确认率、被动批次/track 去重数和失败类型。
+- [ ] 记录 `session.jsonl`、`passive.jsonl`、`failures.jsonl`、state/session 文件的字节数；不得读取或报告内容。
+- [ ] 确认观察期间没有调用播放、skip、trash、scrobble 或 `sync`。
+- [ ] 停止、bootout 并移除 `com.freefm.validation` LaunchAgent；确认 `launchctl print` 已不存在。
+- [ ] 停止后不得删除脱敏证据，直至 Release owner 完成复核；原始响应不得保留。
+- [ ] 更新 `V01-VALIDATION.md` 的最终 7 天结论。
 
-### 停止条件
+通过标准：跨天 session 行为有时间戳证据；证据增长有界；LaunchAgent 已完全移除。
+No-Go：任一未解释失败、证据中出现原始标识或 LaunchAgent 曾执行写操作。
 
-- 账号不是明确 `vipType=0`；
-- 任一歌曲字段矛盾或 probe fee 缺失；
-- 找到多个 owned 同名歌单；
-- preview 计划自动加入 searched candidate；
-- sync 后复读缺失，或出现删除/重排行为；
-- 任一日志/回复出现 credential 或播放 URL。
+### P0-4 session 撤销与重新扫码
 
-### 验收
+负责人：账号持有人 + Validation owner。
+前置：P0-3 完成并停止长期观察，以免提前破坏 7 天 session。
 
-- 最终代码的真实创建/复用、append、复读、第二次幂等均有同一 release SHA 的证据；
-- 只允许普通免费原曲自动加入；
-- 安全版本的真实结果替代旧 Phase 2 写入证据。
+- [ ] 复制最终 release binary 的 SHA-256，不复制 session。
+- [ ] 由账号持有人在网易云官方客户端撤销对应登录。
+- [ ] 运行 `status --json` 和 `sync --quiet`，确认稳定返回 `login_required`，且没有创建/追加歌单。
+- [ ] 检查 stdout/stderr 不包含凭证、账号 ID、歌曲 ID或 URL。
+- [ ] 运行 `freefm auth`，由本人扫码；退出并重启进程后确认 authenticated 且 `vipType=0`。
+- [ ] 运行一次只读 `preview`；如确需再次验证写入，只能由 Release owner 单独批准。
 
-## 6. P1：Private FM 与 session 长期实验
+通过标准：服务端撤销、fail-closed、重新扫码、重启恢复四个状态均有脱敏证据。
+No-Go：撤销后仍允许 sync 写入，或重新认证要求用户粘贴 Cookie。
 
-负责人：验证工程师。实验期间仍不调用播放、skip、trash、scrobble。
+### P0-5 供应链与 CI 固定
 
-### Private FM 计划
+负责人：Rust owner。
 
-1. 使用同一 session、独立进程，在 T0、+1m、+10m、+1h、+6h、+24h 执行只读 preview。
-2. 额外安排 24 次整点运行，用于验证日内周期行为。
-3. 原始 JSON 仅存于权限为 `600` 的临时目录；立即转换成：时间戳、批次大小、加盐 batch hash、与上一批交集数、累计新匿名 track 数、HTTP 状态和请求数，然后删除原始 JSON。
-4. 用第 4 节 transport 记录证明整个实验中没有播放/skip/trash/scrobble endpoint。
+- [x] 在有网络的受控环境运行 `scripts/pin-actions.sh`，把所有 GitHub Actions 引用固定为完整 commit SHA，并保留版本注释。
+- [x] 保持 `rust-version = 1.85`，CI 用同一版本执行 `cargo check --all-targets --locked`。
+- [x] CI 的 Rust、MSRV、RustSec、Skill/WorkBuddy 包验证均只使用 fake/fixture。
+- [x] Release workflow 为二进制、校验和和 WorkBuddy ZIP生成 GitHub artifact attestation。
+- [x] 生成 CycloneDX 或 SPDX SBOM；SBOM 不包含本机路径或环境信息。
+- [x] Release tarball 内只包含 binary、README、LICENSE；不要包含 session、日志、target 树或实验输出。
+- [x] 审查 workflow permissions，遵循最小权限；只有 Release job 使用 `contents: write`、`id-token: write` 和 `attestations: write`。
 
-判定规则：
+通过标准：workflow 中不存在 `uses: ...@vN`、`@stable` 或 branch；CI 绿色；Release dry review 通过。
+No-Go：无法确认 Action commit 来源，或 attestation/SBOM 绑定的不是最终 tag commit。
 
-- 24 小时内出现至少 2 个不同 batch，且后续批次仍出现此前未见的匿名 track，才可声称“被动采样可持续获得新推荐”；
-- 连续 3 次完全相同或 24 小时没有新增时，不判定程序失败，但必须把“推荐可能停滞”作为产品限制，cron 不得承诺每次都有新增。
+### P0-6 最终本地门禁
 
-### Session 计划
+负责人：Rust owner；复核：Release owner。
+前置：P0-1 至 P0-5 完成。
 
-1. `auth` 进程退出后立即、+1h、+24h、+7d 分别只运行 `status --json`；
-2. 不通过 sync 的 cookie refresh 混淆 session 原始寿命实验；长期同步场景另行记录每次 refresh 后的寿命；
-3. 在隔离验证 session 上由用户主动撤销登录，确认下一次 status/sync 返回稳定 `login_required`，不打印凭证；
-4. 删除本地 session 文件只验证“本地缺失”，不能冒充“服务端撤销”。
+在干净候选 commit 上依次执行：
 
-### 验收
+```sh
+cargo fmt --all -- --check
+cargo test --all-targets --locked
+cargo clippy --all-targets --locked -- -D warnings
+cargo build --release --locked
+cargo audit
+git diff --check
+gitleaks dir . --no-banner --redact
+sh -n skills/freefm/scripts/freefm-sync.sh
+sh -n scripts/package-workbuddy.sh
+scripts/package-workbuddy.sh target/freefm-workbuddy.zip
+```
 
-- 提交一张带真实时间戳的脱敏 observation 表；
-- 明确区分跨进程恢复、跨天有效、服务端撤销和本地文件缺失；
-- 任何无法完成的时点保持 pending，不用推断补齐。
+- [x] 记录每条命令退出码和测试数。
+- [x] 记录最终 binary 字节数、SHA-256、`--version` 冷启动和峰值 RSS。
+- [x] 记录最终 session/state/evidence 字节数与实际 HTTP 请求数，禁止记录内容。
+- [x] 检查 `git status --ignored`，确认 `.freefm/`、`.freefm-validation/`、QR、target 和实验临时文件均未跟踪。
 
-## 7. P1：免费同录音自动替换研究门槛
+通过标准：全部退出 0；gitleaks 零发现；工作区只含预期发布改动。
+No-Go：不得用跳过测试、降低 lint 或删除证据的方式“修绿”。
 
-负责人：协议工程师与人工标注复核人员。
+### P0-7 提交、推送与 GitHub CI
 
-### 决策流程
+负责人：Release owner。
+前置：P0-6 通过。
 
-1. 研究当前真实 song detail、album detail、song wiki/扩展元数据及社区实现，寻找稳定的官方 recording ID、ISRC 或等价不可变录音标识。
-2. 构建至少 30 组脱敏标注样本：
-   - 至少 10 组确认同录音的不同合法发行；
-   - 至少 20 组 hard negatives，包含同歌手重录、remaster、radio edit、live 场次、remix、翻唱、伴奏、Acoustic、sped-up、slowed、语言版和未知标签。
-3. 只有同时满足以下条件才允许实现 `add_free_replacement`：
-   - 原曲与候选共享同一个非空权威录音标识；
-   - 完整主要歌手集合一致；
-   - 规范化标题一致；
-   - 时长差不超过 1.5 秒；
-   - 版本标记与语言/演出类型一致；
-   - 候选通过与原曲相同的严格普通账号免费判定；
-   - 标注集上 false positive 为 0，且两名复核人一致批准。
-4. 标题、歌手和时长本身永远不能解锁自动替换。
-5. 如果网易云当前接口没有权威录音标识，v0.1 正式保留 `candidate_only`，README 明确宣布自动同曲替换延期；这属于安全的产品范围调整，不得用模糊评分绕过。
+- [ ] 使用显式文件列表 `git add`，不得 `git add -A`。
+- [ ] 提交信息概括 Rust 模块化、平台支持、图标、长期证据和发布硬化。
+- [ ] 推送后确认远端 commit SHA 与本地 `HEAD` 一致。
+- [ ] 等待 macOS、Linux、MSRV、RustSec 和打包检查全部成功。
+- [ ] 若 CI 修改代码，回到 P0-6，从头重跑；不得直接修 tag。
+- [ ] 最终确认 `main` 工作区干净、GitHub CI 绿色。
 
-## 8. P1：OpenClaw、Hermes 与 0-token 验证
+通过标准：远端 `main` 精确对应已审计 commit；没有未提交或未推送 diff。
 
-负责人：自动化/运维工程师。第 3、4、5、6 节通过后才开始。
+### P0-8 `v0.1.0` tag 与 GitHub Release
 
-1. 安装固定 release binary 到绝对路径；scheduler 不运行 Cargo。
-2. 读取实际安装的 OpenClaw/Hermes 版本和官方 job schema，更新 `SKILL.md` 中的示例，禁止凭记忆猜配置字段。
-3. OpenClaw 使用 deterministic command cron；Hermes 使用 no-agent/script-only cron。
-4. 正常命令固定为：`/absolute/path/freefm sync --quiet`。
-5. 每个宿主连续运行至少 2 次并验证：
-   - exit 0；
-   - stdout/stderr 为 0 bytes；
-   - 没有 Agent run、模型调用或 token 记录；
-   - FreeFM 进程退出后 RSS/CPU 为 0；
-   - 两次运行不重复添加。
-6. 失败只产生本地非零退出和人工提示；不要自动把每次成功结果发给 Agent。宿主无法直接运行 deterministic command 时，不上线该集成。
-7. 默认周期暂定每小时一次；只有第 6 节长期实验支持该频率后才写入最终文档。
+负责人：Release owner。
+前置：P0-7 全绿。
 
-## 9. P2：发布、性能与交付
+- [ ] 创建 annotated `v0.1.0` tag，确认 tag 指向通过 CI 的精确 commit。
+- [ ] 推送 tag，等待 Release workflow 完成。
+- [ ] 核对 macOS arm64、Linux x86_64、WorkBuddy ZIP、SHA-256、SBOM 和 attestations 均存在。
+- [ ] 在空临时目录下载 Release，验证 checksum、attestation、解压文件清单和 `freefm --version`。
+- [ ] Release notes 明确：实验性未公开网易云接口、普通账号限定、candidate-only、append-only、零常驻、已验证平台与剩余限制。
+- [ ] 确认 Release 页面没有 session、账号数据或内部验证路径。
 
-负责人：release owner。
+通过标准：公开 Release 可从零下载、校验、运行；tag、二进制和 SBOM 指向同一源码。
 
-1. 合并最终证据，删除或明确标记旧的、已被替代的 Phase 1/Phase 2 数字。
-2. 执行最终门禁：format、24+ tests、Clippy、release、RustSec、secret scan、`git diff --check`。
-3. 对最终 release 重测并记录：
-   - binary bytes 与 SHA-256；
-   - cold `status`、preview、无新增 sync、有新增 sync 的 wall time；
-   - 各场景峰值 RSS；
-   - 真实 HTTP 请求数；
-   - session/state/lock 大小，以及 24 小时运行后的 state 增长。
-4. 只有完整依赖在真实指标上明显不达标时，才评估裁剪 feature 或最小协议客户端；不要为了几 MB 重写协议。
-5. 创建干净初始提交和 `v0.1.0` tag；提交前使用 `git status --ignored` 复核 `.freefm/`、QR、target 和验证临时文件均未跟踪。
+### P0-9 Homebrew tap
 
-## 10. Go/No-Go 清单
+负责人：Release owner。
+前置：P0-8 Release 验证完成。
 
-满足以下全部条件才能启用 unattended cron 并发布 v0.1：
+- [ ] 在 `Yuxin-Qiao/homebrew-tap` 创建或更新 `Formula/freefm.rb`。
+- [ ] Formula 使用固定 `v0.1.0` Release URL 和实际 tarball SHA-256，不使用 `main`。
+- [ ] `test do` 至少执行 `freefm --version` 和只读 help；不得访问网易云或用户目录。
+- [ ] 在干净环境实跑：
 
-- [x] P0 离线错误、crash window、并发进程和 CLI 合约测试全部通过；
-- [x] 最小 session cookie 集经过隔离实测；
-- [x] 最终 release 在普通账号上完成真实 append、复读和第二次幂等；
-- [x] 固定 crate 的实际 HTTP 请求数已与 `client_calls` 分开计数并覆盖分块测试；
-- [ ] 24 小时被动 FM 证据完成，限制如实记录；
-- [ ] session 跨天与服务端撤销行为有证据；
-- [x] 当前接口未发现权威录音 ID，v0.1 正式保持 candidate-only；
-- [x] Hermes 真实 no-agent 手动周期证明 0 LLM token；
-- [ ] 最终性能、短期 state 大小与依赖审计已完成；24 小时 state 增长仍待观察；
-- [ ] Git 历史和 release tag 不含任何凭证或私人账号数据。
+```sh
+brew tap Yuxin-Qiao/tap
+brew install Yuxin-Qiao/tap/freefm
+brew test Yuxin-Qiao/tap/freefm
+brew audit --strict --online Yuxin-Qiao/tap/freefm
+```
 
-任一项未完成时的默认结论是：可继续人工 `preview`，但不宣称完整产品已完成，不启用无人值守 sync。
+- [ ] 卸载后重新安装一次，确认没有依赖源码工作区或 Cargo cache。
+- [ ] README 的 Homebrew 命令只能在上述步骤成功后解除“即将开放”状态。
 
-## 11. 建议排期与并行方式
+通过标准：tap/install/test/audit 全部通过，安装 binary SHA 与 Formula 指定 Release 对应。
 
-- 第 1–2 个工程日：P0 fake/error/crash/锁测试、Unix 平台声明、RustSec、session 最小化。
-- 第 2–3 个工程日：instrumented request counter、协议源码对照、最终 release 冻结。
-- 第 3 个工程日：普通账号最终真实闭环；失败则回到 P0，不进入自动化。
-- 第 3–4 个工程日并行启动：24 小时 FM 实验、session 时点实验、同录音身份研究。
-- 第 5 个工程日：OpenClaw/Hermes 宿主验证、最终性能测量和文档整理。
-- +7 天：补齐 session 7-day 观察后决定是否把长期 session 声明写入 v0.1。
+## 3. 平台实机与发布后任务
 
-推荐角色分工：一名 Rust/测试 owner、一名协议/实测 owner、一名自动化/release owner；真实扫码和撤销操作由账号持有人本人完成。
+### P1-1 Codex
+
+负责人：Platform owner；需要用户本机配合。
+
+- [ ] 由 cc-switch 重新生成或安全移走无法解析的 `~/.codex/cc-switch-model-catalog.json`；不要手工猜字段。
+- [ ] 安装 `skills/freefm` 到 `~/.codex/skills/freefm`，重启 Codex，确认 Skill 可发现。
+- [ ] 用只读 `freefm status --json` 验证 Codex sandbox permissions profile 可访问网络和指定 `~/.freefm`。
+- [ ] 实跑 `codex sandbox -- freefm sync --quiet`，确认 exit 0、stdout/stderr 为空且未启动 Agent 回合。
+- [ ] 文档明确：`codex exec` 和桌面循环自动化会消耗 token；零 token 周期必须由 OS cron/launchd 或 deterministic sandbox command 执行。
+
+通过标准：Codex Skill 可发现；确定性路径有本机证据；不把 Agent 自动化宣传为 0 token。
+
+### P1-2 Tencent WorkBuddy
+
+负责人：Platform owner + 已登录用户。
+
+- [ ] 从 `v0.1.0` Release 下载 WorkBuddy ZIP并验证 checksum/attestation。
+- [ ] 在已签名、已公证的 WorkBuddy 客户端登录后，通过“专家·技能·连接器 → 添加技能 → 上传技能”真实导入。
+- [ ] 确认平台只调用本地 `freefm` binary，不读取或上传 `~/.freefm`。
+- [ ] 先执行 `status`/`preview`；未经明确人工批准不执行 `sync`。
+- [ ] 截取不含账号、歌曲、路径和凭证的导入成功证据。
+- [ ] 真实导入成功前，只宣称“本地 Skill 包兼容”，不宣称已上架 WorkBuddy 市场。
+
+通过标准：真实客户端导入与只读调用成功；权限范围清晰；没有凭证进入平台。
+
+### P1-3 OpenClaw、Hermes 与 ClawHub stable
+
+负责人：Platform owner。
+前置：P0-8/P0-9 完成，P0-2/P0-3/P0-4 无异常。
+
+- [ ] 用固定 `v0.1.0` tag/commit 重新安装 OpenClaw 与 Hermes Skill，禁止继续引用移动的 `main`。
+- [ ] OpenClaw isolated Gateway command job 再跑两次 `freefm sync --quiet`，确认无 Agent message、无 delivery、空输出且幂等。
+- [ ] Hermes `no_agent/script-only` 再跑两次，确认 run record 为 no-agent、空输出且幂等。
+- [ ] 发布 ClawHub `0.1.0` stable channel；确认安全扫描通过且安装内容包含 helper。
+- [ ] 最后解除 Hermes `freefm-hourly` 暂停；保留失败时的人工提示，不自动唤醒 LLM。
+- [ ] 观察首个正式周期；成功时应为空输出，失败时立即再次暂停 job。
+
+通过标准：正常周期 0 LLM token、0 resident process、空输出、无重复追加。
+No-Go：宿主不能证明 deterministic/no-agent，或需要 Agent 解释每次成功结果。
+
+## 4. 文档与项目展示复核
+
+负责人：Release owner + 一名非开发者复核。
+
+- [ ] README 首屏在 30 秒内回答“是什么、安全吗、怎么安装、当前成熟度”。
+- [ ] 中文/英文 README 命令、平台状态、版本和限制一致。
+- [ ] Agent platforms 表格使用官方彩色标志，白色/深色背景下均可辨识，图片不依赖第三方热链。
+- [ ] AI 安装 prompt 禁止 AI 读取凭证，并要求用户本人扫码、先 preview、后确认 sync。
+- [ ] `AGENTS.md` 保留产品 invariant、测试要求和平台 Skill 边界。
+- [ ] `V01-VALIDATION.md` 区分“真实证明”“离线 fixture”“仍未验证”，删除已过时或互相冲突的数据。
+- [ ] SECURITY、CONTRIBUTING、LICENSE、release notes 和仓库 About 信息一致。
+- [ ] 不在 README 堆砌未完成平台徽章；未实跑的能力明确标记 pending。
+
+## 5. 最终 Go/No-Go
+
+只有以下项目全部勾选，才允许宣布 FreeFM v0.1 完成并开启周期同步：
+
+- [ ] +24h 和 +7d 被动 FM/session 脱敏证据完成，无未解释失败。
+- [ ] session 服务端撤销后 fail-closed，重新扫码与重启恢复成功。
+- [ ] 当前工作区代码门禁、RustSec、gitleaks、MSRV 和 CI 全绿。
+- [ ] GitHub Actions 已固定完整 SHA；Release 有 checksum、SBOM 和 attestation。
+- [ ] `main` 干净，远端 commit、tag、Release 源码完全一致。
+- [ ] `v0.1.0` Release 从零下载与运行验证通过。
+- [ ] Homebrew tap/install/test/audit 通过。
+- [ ] OpenClaw 与 Hermes 固定 tag 的零 LLM 路径复验通过。
+- [ ] Codex deterministic sandbox 路径完成实机验证，或在 Release 中明确标为 pending。
+- [ ] WorkBuddy 完成真实导入，或只以“本地兼容包”发布且明确未上架。
+- [ ] 所有公开材料不含凭证、原始歌曲/歌单数据、播放 URL 或完整响应。
+
+任何一项失败：保持 Hermes 和其他周期 `sync` 暂停；允许人工执行 `status`、`doctor` 和 `preview`，但不得为了赶版本降低免费判定、owner 校验、幂等或 credential 边界。
+
+## 6. 团队每日回报模板
+
+```text
+任务 ID：P0-x / P1-x
+负责人：
+候选 commit/tag：
+执行时间（UTC + Asia/Shanghai）：
+执行命令：
+退出码：
+脱敏结果：只写计数、布尔值、大小、SHA 和失败类型
+产物位置：仓库相对路径或公开 Release URL
+复核人：
+结论：PASS / NO-GO / BLOCKED_BY_ENVIRONMENT
+下一步：
+```
+
+环境阻塞必须与产品失败分开。例如网络沙箱无法更新 RustSec 数据库应写
+`BLOCKED_BY_ENVIRONMENT`，在获准联网的受控环境重跑；不得据此判断 FreeFM 不可行。

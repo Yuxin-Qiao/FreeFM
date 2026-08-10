@@ -129,6 +129,30 @@ Do not run `auth` in a hidden terminal: the user must see and scan the QR code.
 Do not create an unattended task until one user-confirmed `sync` succeeds, and
 keep its payload fixed to `freefm sync --quiet` without an Agent turn.
 
+## Codex skill usage
+
+This folder is directly usable as a Codex skill: it installs as
+`~/.codex/skills/freefm` and is discovered through the `name`/`description`
+frontmatter above. One-time install:
+
+```sh
+install -d -m 700 "$HOME/.codex/skills"
+cp -R "{baseDir}/skills/freefm" "$HOME/.codex/skills/freefm"
+```
+
+Alternatively, ask the Codex skill installer to fetch the `skills/freefm` path
+from `Yuxin-Qiao/FreeFM`. Restart Codex after installing.
+
+Scheduling honesty: `codex exec` and desktop recurring automations start an
+Agent turn and consume LLM tokens; use them for interactive setup and
+troubleshooting only, never for routine sync. Zero-token cycles must execute
+the binary directly: the OS scheduler (cron/launchd) calling
+`freefm sync --quiet`, or, where the deterministic sandbox runner is available,
+a fixed command such as `codex sandbox -- freefm sync --quiet`. The sandbox
+path needs a permissions profile that allows network access and writes to
+`~/.freefm`; verify one `status --json` through the same profile before
+enabling it.
+
 ## Verification
 
 - `freefm status --json` reports an authenticated ordinary account.
