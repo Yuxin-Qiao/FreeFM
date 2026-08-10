@@ -208,10 +208,10 @@ pub(crate) fn build_plan<R: RemoteApi>(
         } else {
             action
         };
-        if matches!(final_action, Action::AddOriginal)
-            && let Some(id) = &selected_id
-        {
-            candidates_to_add.push(id.clone());
+        if matches!(final_action, Action::AddOriginal) {
+            if let Some(id) = &selected_id {
+                candidates_to_add.push(id.clone());
+            }
         }
         decisions.push(Decision {
             original_id: original.id.clone(),

@@ -115,10 +115,10 @@ impl Remote {
         let mut result = HashMap::new();
         for value in songs {
             let mut song = song_from_value(value)?;
-            if song.privilege.is_none()
-                && let Some(privilege) = privileges.get(&song.id)
-            {
-                song.privilege = Some(privilege.clone());
+            if song.privilege.is_none() {
+                if let Some(privilege) = privileges.get(&song.id) {
+                    song.privilege = Some(privilege.clone());
+                }
             }
             result.insert(song.id.clone(), song);
         }
@@ -191,11 +191,11 @@ impl Remote {
             let page_len = playlists.len();
             let mut new_count = 0;
             for playlist in playlists {
-                if let Some(summary) = playlist_summary(playlist)
-                    && seen_ids.insert(summary.id.clone())
-                {
-                    result.push(summary);
-                    new_count += 1;
+                if let Some(summary) = playlist_summary(playlist) {
+                    if seen_ids.insert(summary.id.clone()) {
+                        result.push(summary);
+                        new_count += 1;
+                    }
                 }
             }
             let more = body.get("more").and_then(Value::as_bool);
