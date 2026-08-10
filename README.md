@@ -110,12 +110,12 @@ PATH` or `FREEFM_HOME` isolates the state root.
 The Rust binary is the product; platform integrations only install and invoke
 its deterministic command. Routine scheduled sync uses **zero LLM tokens**.
 
-| Platform | Install | Model-free scheduled path | Evidence |
-|---|---|---|---|
-| <img src="assets/platforms/openclaw.svg" alt="OpenClaw" width="20" height="20"> OpenClaw | `openclaw skills install @yuxin-qiao/freefm` | Gateway `--command-argv` | Isolated live run: exit 0, empty output |
-| <img src="assets/platforms/hermes.png" alt="Hermes" width="20" height="20"> Hermes | `hermes skills install Yuxin-Qiao/FreeFM/skills/freefm` | `--no-agent` script | Live run `SAFE / ALLOWED` |
-| <img src="assets/platforms/workbuddy.png" alt="WorkBuddy" width="20" height="20"> WorkBuddy | Upload `freefm-workbuddy.zip` | Local command capability | Signed client installed; import validation pending login |
-| <img src="assets/platforms/codex.svg" alt="Codex" width="20" height="20"> Codex | Copy `skills/freefm` to `~/.codex/skills/freefm` | OS cron/launchd or `codex sandbox` | Structure compatible; sandbox run pending local env |
+| Platform | Installation | Scheduled Path (0 LLM) | Validation Evidence |
+|:---|:---|:---|:---|
+| <img src="assets/platforms/openclaw.svg" width="18" height="18" align="center"> **OpenClaw** | `openclaw skills install` `@yuxin-qiao/freefm` | Gateway `--command-argv` | Isolated Gateway run (exit 0) |
+| <img src="assets/platforms/hermes.png" width="18" height="18" align="center"> **Hermes** | `hermes skills install` `Yuxin-Qiao/FreeFM/skills/freefm` | Script `--no-agent` | Hermes scan `SAFE / ALLOWED` |
+| <img src="assets/platforms/workbuddy.png" width="18" height="18" align="center"> **WorkBuddy** | Upload `freefm-workbuddy.zip` | Local command capability | Signed client & package verified |
+| <img src="assets/platforms/codex.svg" width="18" height="18" align="center"> **Codex** | Copy `skills/freefm` to `~/.codex/skills/freefm` | OS cron / `codex sandbox` | Skill structure verified |
 
 OpenClaw example:
 
