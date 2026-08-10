@@ -42,15 +42,10 @@ impl Cli {
                 other => return Err(AppError::Usage(format!("未知参数：{other}\n\n{}", usage()))),
             }
         }
-        if quiet && command == "auth" {
-            return Err(AppError::Usage(
-                "auth 需要交互式二维码，不能使用 --quiet".to_string(),
-            ));
-        }
-        if quiet && command == "tui" {
-            return Err(AppError::Usage(
-                "tui 是交互界面，不能使用 --quiet".to_string(),
-            ));
+        if quiet && matches!(command.as_str(), "auth" | "tui" | "review") {
+            return Err(AppError::Usage(format!(
+                "{command} 需要交互式终端，不能使用 --quiet"
+            )));
         }
         Ok(Self {
             command,
@@ -62,10 +57,12 @@ impl Cli {
 }
 
 pub(crate) fn usage() -> String {
-    "FreeFM\n\n用法：freefm <auth|preview|sync|status|doctor|tui> [--json] [--quiet] [--data-dir PATH]\n\n\
+    "FreeFM\n\n用法：freefm <auth|preview|sync|audit|review|status|doctor|tui> [--json] [--quiet] [--data-dir PATH]\n\n\
 auth     生成二维码并等待网易云官方客户端确认\n\
 preview  读取私人 FM 并预览加入、候选、跳过；绝不写远端歌单\n\
 sync     读取私人 FM，并 append-only 写入 FreeFM · Auto\n\
+audit    只读复查 FreeFM · Auto 全部歌曲当前是否仍可免费完整播放\n\
+review   交互式确认免费同曲候选，仅本机保存 trusted mapping\n\
 status   检查本机会话和登录状态\n\
 doctor   检查本机状态、权限和 API 登录可用性
 tui      打开轻量交互界面；不会改变命令的安全边界

@@ -29,8 +29,11 @@
 FreeFM 读取网易云私人 FM，只把**普通账号有明确正证据可免费完整播放**的原曲追加到
 你拥有的 `FreeFM · Auto` 歌单：
 
-- **严格正证据**：字段缺失、格式异常或互相矛盾一律跳过；相似免费发行只在预览展示，
-  v0.1 绝不自动替换。
+- **严格正证据**：字段缺失、格式异常或互相矛盾一律跳过；相似免费发行绝不自动替换，
+  `preview` 只展示为候选，`freefm review` 可让你一次性确认 trusted mapping。
+- **长期可播**：`freefm audit` 用与加入时相同的严格逻辑复查歌单里每首歌
+  （`still_free` / `became_restricted` / `unavailable` / `unknown`），绝不修改歌单；
+  v0.1 不做自动修复。
 - **只追加**：`preview` 永远只读，只有 `sync` 写歌单；重复/并发按 ID 去重，不删除、
   不重排、不碰手工加入的歌曲。
 - **零常驻**：单次执行后立即退出，空闲时 0 进程、0 RAM、0 CPU，无数据库、无 Web
@@ -57,6 +60,8 @@ curl -fsSL https://raw.githubusercontent.com/Yuxin-Qiao/FreeFM/main/scripts/inst
 ```sh
 freefm auth          # 用网易云官方客户端扫码登录
 freefm preview       # 只读预览：展示将加入 / 候选 / 跳过
+freefm audit         # 只读复查：已保存歌曲现在是否仍可免费播放（exit 3 = 需要关注）
+freefm review        # 交互式：人工确认一次免费同曲候选（仅本机记录）
 freefm sync          # 只追加写入到 "FreeFM · Auto" 歌单
 freefm sync --quiet  # 定时任务路径；成功时无输出
 
@@ -96,6 +101,8 @@ MUSIC_U、session 和二维码 key。使用
 |---|---:|---|
 | `freefm auth` | 否 | 官方客户端扫码登录 |
 | `freefm preview` | 否 | 展示加入、候选和跳过 |
+| `freefm audit` | 否 | 复查已保存歌曲：still_free / became_restricted / unavailable / unknown |
+| `freefm review` | 仅本机 | 人工确认候选为 trusted 免费版本；绝不写远端 |
 | `freefm sync` | 只追加 | 加入严格验证的免费原曲 |
 | `freefm status` | 否 | 检查 session 与账号 |
 | `freefm doctor` | 否 | 检查权限、状态和接口结构 |
@@ -119,10 +126,13 @@ MUSIC_U、session 和二维码 key。使用
 OpenClaw 定时示例：
 
 ```sh
-openclaw automations add --every 1h --name freefm-hourly \
+openclaw automations add --every 6h --name freefm-sync \
   --command-argv '["/absolute/path/to/freefm","sync","--quiet"]' \
   --no-deliver --timeout-seconds 120
 ```
+
+保守默认是每 6 小时一次，避免歌单过快膨胀；FreeFM 本身不内置 scheduler，你可以
+按需提高或降低频率。
 
 WorkBuddy 包：`scripts/package-workbuddy.sh` 生成
 `target/freefm-workbuddy.zip`，在“专家·技能·连接器 → 添加技能 → 上传技能”导入。

@@ -9,9 +9,14 @@
 ### 已完成，不要重复实现
 
 - Native Rust CLI/TUI；产品运行时不是 Skill，也不依赖 Agent、Node、Python、Docker、数据库或 Web 服务。
-- `auth`、`preview`、`sync`、`status`、`doctor`、`tui`；`preview` 只读，`sync` 只追加。
+- `auth`、`preview`、`sync`、`audit`、`review`、`status`、`doctor`、`tui`；
+  `preview`/`audit` 只读，`sync` 只追加，`review` 仅本机写 trusted mapping。
 - 仅接受明确 `vipType == 0` 的普通账号；免费判定缺失、异常或矛盾时 fail-closed。
-- 受限歌曲的免费同曲搜索结果仅 `candidate_only`，v0.1 不自动替换。
+- 受限歌曲的免费同曲搜索结果仅 `candidate_only`，v0.1 不自动替换；用户经
+  `freefm review` 明确确认后才保存 trusted mapping，且每次使用都重新验证目标可播。
+- `freefm audit` 只读复查 `FreeFM · Auto` 全部歌曲（still_free /
+  became_restricted / unavailable / unknown），需要关注时以结构化输出和 exit 3 提示，
+  不删除、不替换、不 repair。
 - owned playlist 名称和 owner 校验、重名 fail-closed、跨进程锁、远端复读、崩溃恢复和幂等。
 - fake transport、脱敏 fixture、分页/500 首分块、超时/5xx/登录失效/状态损坏等离线测试。
 - 真实 session 重启恢复、真实 owned playlist append、复读确认和第二次静默幂等。

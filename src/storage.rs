@@ -1,6 +1,7 @@
 use crate::cli::Cli;
 use crate::error::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::env;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
@@ -33,6 +34,9 @@ impl Paths {
     }
     pub(crate) fn lock(&self) -> PathBuf {
         self.root.join("sync.lock")
+    }
+    pub(crate) fn trusted(&self) -> PathBuf {
+        self.root.join("trusted.json")
     }
 }
 
@@ -92,6 +96,33 @@ pub(crate) struct SessionFile {
 pub(crate) struct StateFile {
     pub(crate) playlist_id: Option<String>,
     pub(crate) last_sync_at: Option<u64>,
+    /// Song IDs FreeFM itself appended successfully. Used only to scope a
+    /// future safe repair; never to delete user-added tracks.
+    #[serde(default)]
+    pub(crate) added_song_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct TrustedMapping {
+    pub(crate) target_id: String,
+    pub(crate) approved_at: u64,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct TrustedStore {
+    pub(crate) mappings: HashMap<String, TrustedMapping>,
+}
+
+impl TrustedStore {
+    pub(crate) fn approve(&mut self, original_id: &str, target_id: &str) {
+        self.mappings.insert(
+            original_id.to_string(),
+            TrustedMapping {
+                target_id: target_id.to_string(),
+                approved_at: now_seconds(),
+            },
+        );
+    }
 }
 
 pub(crate) fn load_session(paths: &Paths) -> AppResult<Option<SessionFile>> {
@@ -122,6 +153,22 @@ pub(crate) fn load_state(paths: &Paths) -> AppResult<(StateFile, bool)> {
         Ok(state) => Ok((state, false)),
         Err(_) => Ok((StateFile::default(), true)),
     }
+}
+
+pub(crate) fn load_trusted(paths: &Paths) -> AppResult<(TrustedStore, bool)> {
+    if !paths.trusted().exists() {
+        return Ok((TrustedStore::default(), false));
+    }
+    let bytes = fs::read(paths.trusted())?;
+    match serde_json::from_slice::<TrustedStore>(&bytes) {
+        Ok(store) => Ok((store, false)),
+        // Fail closed to no trusted mappings rather than deleting user data.
+        Err(_) => Ok((TrustedStore::default(), true)),
+    }
+}
+
+pub(crate) fn save_trusted(paths: &Paths, store: &TrustedStore) -> AppResult<()> {
+    write_private_json(&paths.trusted(), store)
 }
 
 pub(crate) fn restrict_dir(path: &Path) -> AppResult<()> {
