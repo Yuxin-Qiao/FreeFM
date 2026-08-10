@@ -173,6 +173,31 @@ class RunReviewTests(unittest.TestCase):
         code = ai_review.run_review(cfg, model_caller=should_not_run)
         self.assertEqual(code, 0)
 
+    def test_unconfigured_model_skips_fail_open(self):
+        cfg, tmp = make_cfg(diff_text="@@ -1 +1 @@\n-old\n+new\n")
+        self.addCleanup(tmp.cleanup)
+        cfg.endpoint = ""
+        cfg.api_key = ""
+
+        def should_not_run(endpoint, api_key, model, messages):
+            raise AssertionError("model must not be called without configuration")
+
+        code = ai_review.run_review(cfg, model_caller=should_not_run)
+        self.assertEqual(code, 2)
+
+    def test_dry_run_works_without_configuration(self):
+        cfg, tmp = make_cfg(diff_text="@@ -1 +1 @@\n-old\n+new\n")
+        self.addCleanup(tmp.cleanup)
+        cfg.endpoint = ""
+        cfg.api_key = ""
+        cfg.dry_run = True
+
+        def should_not_run(endpoint, api_key, model, messages):
+            raise AssertionError("model must not be called in dry-run")
+
+        code = ai_review.run_review(cfg, model_caller=should_not_run)
+        self.assertEqual(code, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """AI PR verification for FreeFM: code review plus acceptance verification.
 
-Calls an OpenAI-compatible /chat/completions endpoint. Defaults to the GitHub
-Models free tier (https://models.github.ai/inference) using the automatic
-GITHUB_TOKEN, which requires the `models-ai: write` job permission. Override
-with AI_REVIEW_API_KEY for any other OpenAI-compatible provider.
+Calls an OpenAI-compatible /chat/completions endpoint. The provider is fully
+configurable through the environment: AI_REVIEW_ENDPOINT (base URL),
+AI_REVIEW_API_KEY, and AI_REVIEW_MODEL. There is no bundled default provider;
+without these variables the bot skips with exit code 2 so CI fails open.
 
 Exit codes:
   0  no blocking findings (or --dry-run)
@@ -27,8 +27,6 @@ import urllib.request
 from pathlib import Path
 from types import SimpleNamespace
 
-DEFAULT_ENDPOINT = "https://models.github.ai/inference"
-DEFAULT_MODEL = "gpt-4o-mini"
 DIFF_LIMIT = 60_000
 CONTEXT_LIMIT = 12_000
 REQUEST_TIMEOUT = 120
@@ -251,15 +249,14 @@ def write_output(path, report):
 
 
 def run_review(cfg, model_caller=call_model):
-    diff_text, files, diff_truncated = collect_diff(
-        cfg.base, cfg.head, cfg.diff_file, cfg.context_dir
-    )
-    context = load_context(cfg.context_dir)
-    user_prompt = build_user_prompt(
-        cfg.pr_number, cfg.title, cfg.body, files, diff_text, diff_truncated
-    )
     meta = {"pr_number": cfg.pr_number, "model": cfg.model}
     if cfg.dry_run:
+        diff_text, files, diff_truncated = collect_diff(
+            cfg.base, cfg.head, cfg.diff_file, cfg.context_dir
+        )
+        user_prompt = build_user_prompt(
+            cfg.pr_number, cfg.title, cfg.body, files, diff_text, diff_truncated
+        )
         preview = (
             "## AI Verification Bot Report (dry-run)\n\n"
             "Model call skipped; prompt preview below.\n\n```\n"
@@ -268,6 +265,20 @@ def run_review(cfg, model_caller=call_model):
         )
         write_output(cfg.output, preview)
         return 0
+    if not cfg.endpoint or not cfg.api_key:
+        missing = [name for name, value in (("AI_REVIEW_ENDPOINT", cfg.endpoint), ("AI_REVIEW_API_KEY", cfg.api_key)) if not value]
+        print(
+            f"AI verification skipped: model not configured (set {', '.join(missing)}); failing open",
+            file=sys.stderr,
+        )
+        return 2
+    diff_text, files, diff_truncated = collect_diff(
+        cfg.base, cfg.head, cfg.diff_file, cfg.context_dir
+    )
+    context = load_context(cfg.context_dir)
+    user_prompt = build_user_prompt(
+        cfg.pr_number, cfg.title, cfg.body, files, diff_text, diff_truncated
+    )
     messages = [
         {
             "role": "system",
@@ -320,9 +331,9 @@ def main(argv=None):
         title=args.title,
         body=args.body,
         dry_run=args.dry_run,
-        endpoint=os.environ.get("AI_REVIEW_ENDPOINT") or DEFAULT_ENDPOINT,
-        model=os.environ.get("AI_REVIEW_MODEL") or DEFAULT_MODEL,
-        api_key=os.environ.get("AI_REVIEW_API_KEY") or os.environ.get("GITHUB_TOKEN") or "",
+        endpoint=os.environ.get("AI_REVIEW_ENDPOINT") or "",
+        model=os.environ.get("AI_REVIEW_MODEL") or "gpt-4o-mini",
+        api_key=os.environ.get("AI_REVIEW_API_KEY") or "",
     )
     return run_review(cfg)
 
