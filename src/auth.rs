@@ -4,7 +4,10 @@ use crate::storage::{Paths, SessionFile, StoredCookie, restrict_dir, write_priva
 use netease_music::{LoginQrCheckParams, NeteaseMusicClient};
 use qrcode::{QrCode, render::unicode::Dense1x2};
 use serde_json::{Value, json};
+use std::fs;
 use std::io::{self, Write};
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
@@ -64,8 +67,16 @@ pub(crate) fn authenticate(paths: &Paths) -> AppResult<Value> {
         .map_err(|_| AppError::ApiIncompatible("二维码内容无法生成".to_string()))?;
     let rendered = qr.render::<Dense1x2>().quiet_zone(true).build();
     restrict_dir(&paths.root)?;
+    let svg = qr
+        .render::<qrcode::render::svg::Color>()
+        .quiet_zone(true)
+        .build();
+    let svg_path = paths.root.join("login.svg");
+    fs::write(&svg_path, svg.as_bytes())?;
+    fs::set_permissions(&svg_path, fs::Permissions::from_mode(0o600))?;
     println!("请用网易云音乐官方客户端扫码并确认。");
     println!("{rendered}");
+    println!("二维码图片：{}", svg_path.display());
     println!("等待扫码确认（最多 5 分钟）...");
     io::stdout().flush()?;
     let started = SystemTime::now();

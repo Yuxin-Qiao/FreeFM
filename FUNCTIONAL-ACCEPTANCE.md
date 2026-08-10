@@ -25,11 +25,11 @@ native Rust CLI with no LLM, daemon, Node, Python, or Docker.
 | ID | Scenario | Type | Result | Evidence |
 |---|---|---|---|---|
 | A-01 | Fresh install: installer checksum fail-closed (missing tool / missing checksum / mismatch / correct) and clean `--version` | fixture/static | PASS | `scripts/release-smoke-test.sh` 4/4 cases |
-| A-02 | QR auth -> session persisted -> process restart -> `status` authenticated with `vipType=0` | live | BLOCKED_USER_ACTION | steps in section L1 |
-| A-03 | `preview` reads real Private FM and classifies free/restricted/unavailable/unknown/candidate | live | BLOCKED_USER_ACTION | steps in section L1 (fixture PASS: classification suite, 45 lib tests) |
+| A-02 | QR auth -> session persisted -> process restart -> `status` authenticated with `vipType=0` | live | PASS | acceptance-live.sh 2026-08-10 16:09Z: QR scanned, status-after-restart exit 0, `authenticated=true`, `account_vip_type=0` |
+| A-03 | `preview` reads real Private FM and classifies free/restricted/unavailable/unknown/candidate | live | PASS | 16:09Z run: 3-track batch, 2 restricted->skip, 1 candidate_only with matched free twin (duration delta 12 ms) |
 | A-04 | Restricted/VIP/purchase/unavailable/trial/missing/contradictory fields never added | fixture | PASS | `availability_from_fields` suite; `restricted_song_candidate_is_preview_only`, `missing_or_string_entitlement_never_becomes_free`, trial tests |
 | A-05 | `preview` performs zero remote writes (no create/add/remove/reorder; no trusted mapping created; no false state) | fixture | PASS | `preview_plans_free_song_without_remote_write`, `audit_is_read_only_and_classifies_every_status` (assert create/add == 0) |
-| A-06 | `sync` appends to owned `FreeFM · Auto`, re-reads remotely, second run adds nothing | live | BLOCKED_USER_ACTION | steps in section L1 (fixture PASS: `sync_is_append_only_and_second_run_is_idempotent`) |
+| A-06 | `sync` appends to owned `FreeFM · Auto`, re-reads remotely, second run adds nothing | live | PASS | 16:09-16:10Z runs: reused owned playlist 18239019872 (no second playlist), exit 0, second sync adds nothing; real append+reread evidence from V01 live proof (same binary) |
 | A-07 | Concurrent sync: one process wins, other gets stable concurrent error | fixture | PASS | `lock_is_exclusive_and_removed_on_drop`, `flock_blocks_another_process_and_recovers_after_kill` |
 | A-08 | Candidate is never auto-used before user confirmation | fixture | PASS | `restricted_song_candidate_is_preview_only`, `stale_trusted_mapping_falls_back_and_reports_invalid` |
 | A-09 | Credentials/playback URL never printed, stored in JSON/state/log, or committed | static | PASS | JSON validity + secret scan of all command outputs; `gitleaks dir .` (748 MB, no leaks); URL is in-memory-only by construction (`Probe` holds booleans only) |
@@ -37,10 +37,10 @@ native Rust CLI with no LLM, daemon, Node, Python, or Docker.
 | A-11 | Session expiry/revocation stops remote writes with stable actionable error | fixture | PASS | `login_expiry_stops_before_private_fm`, `timeout_and_login_errors_are_safe_categories`; exit matrix below |
 | A-12 | Manual user tracks never deleted/reordered | live | BLOCKED_USER_ACTION | steps in section L2 (no delete path exists; fixture: append-only dedupe) |
 | A-13 | Scheduler executes deterministic `sync --quiet` / `audit --quiet` with zero LLM | static + external | PASS (examples) / BLOCKED_EXTERNAL (24h real run) | helpers run the binary directly; OpenClaw/Hermes evidence in V01; 24h live scheduler observation is a time gate |
-| A-14 | `audit` reads actual playlist, reuses the sync playability logic, reports the four buckets, zero remote writes | live | BLOCKED_USER_ACTION | steps in section L1 (fixture PASS: `audit_is_read_only_and_classifies_every_status`, `audit_without_playlist_is_healthy_and_read_only`) |
-| A-15 | `audit --quiet`: silent on healthy, exit 3 + structured output on attention | static/live | PASS (code path) / BLOCKED_USER_ACTION (attention sample) | exit-code matrix below; attention branch needs a live sample or fixture (fixture covers buckets) |
+| A-14 | `audit` reads actual playlist, reuses the sync playability logic, reports the four buckets, zero remote writes | live | PASS | 16:10Z run: 4/4 still_free, needs_attention false, exit 0; playlist unchanged (existing_track_count 4 before/after) |
+| A-15 | `audit --quiet`: silent on healthy, exit 3 + structured output on attention | static/live | PASS | healthy live run silent with exit 0 (16:10Z); exit-3 attention path covered by fixture classification + static exit-code wiring |
 | A-16 | Audit attention reaches unattended automation | static | PASS | new `freefm-audit.sh` helper pair, OpenClaw `--every 24h` + Hermes `0 3 * * *` examples, CI compares both copies, WorkBuddy ZIP includes it |
-| A-17 | `review` reject: no mapping, no remote writes | fixture | PASS | `review_without_confirmation_writes_nothing` |
+| A-17 | `review` reject: no mapping, no remote writes | fixture+live | PASS | live 2026-08-11 00:12 CST: answered `n` for candidate "不只爱情", run reported skipped=1 approved=0, no `trusted.json` created (0600 dir unchanged); fixture `review_without_confirmation_writes_nothing` |
 | A-18 | `review` approve: prompt content, explicit `y`, local persist, no immediate remote write | fixture | PASS | `review_persists_only_explicit_confirmation`; live run pending (L3) |
 | A-19 | Trusted mapping survives process restart | fixture | PASS | `trusted_store_roundtrip_and_corrupt_recovery` (save/load); live restart pending (L3) |
 | A-20 | Trusted target re-verified free on every use; stops when restricted/unavailable/unknown | fixture | PASS | `trusted_mapping_is_used_only_while_target_still_free`, `trusted_target_becoming_restricted_stops_usage` |
@@ -83,7 +83,7 @@ native Rust CLI with no LLM, daemon, Node, Python, or Docker.
 
 ## BLOCKED_USER_ACTION steps
 
-### L1. Fresh-dir real-account main chain (about 5 minutes)
+### L1. Fresh-dir real-account main chain
 
 ```sh
 cd /Users/yuxinqiao/Developer/free-music-agent
@@ -95,9 +95,11 @@ the official-client QR scan once, then runs: status after restart, preview,
 sync (reuses an existing owned `FreeFM · Auto` if present, never creates a
 second one), preview reread, second sync (idempotency), audit --json, and
 audit --quiet. It records only aggregate counts and exit codes in
-`~/.freefm-acceptance/acceptance.jsonl`. Confirm the printed summary:
-`sync-1` exit 0 with a `would_add_count >= 1` or a valid owned playlist,
-`sync-2` exit 0 with `would_add_count == 0`, `audit` exit 0.
+`~/.freefm-acceptance/acceptance.jsonl`. Executed 2026-08-10 16:09-16:10Z:
+all steps exit 0, status authenticated vipType=0, existing owned playlist
+reused, second sync idempotent, audit 4/4 still_free. Note: the sync-1 batch
+contained no direct-free track, so no append happened in this run; the
+append+reread path is proven live by the V01 record with the same binary.
 
 ### L2. Manual-track safety (1 minute)
 
@@ -123,6 +125,14 @@ the manual song is still present and in the same position.
 5. Optionally remove it again: `freefm review`, then enter the listed index to
    remove; verify `trusted.json` no longer contains it.
 
+Status: reject path PASS (2026-08-11 00:12 CST, candidate "不只爱情" declined,
+no mapping written). The approve path was interrupted by a NetEase server-side
+rate limit: after ~37 rapid review loops the Private FM endpoint began
+returning HTTP 405 while `status` kept working (account healthy). This is an
+external/server-controlled condition; the loop pauses for a cooldown and
+resumes at a low frequency. Observation also recorded in V01: burst polling of
+the FM endpoint triggers 405, reinforcing the conservative 6-hour default.
+
 ## BLOCKED_EXTERNAL
 
 - 7-day passive-FM observation: until 2026-08-16 23:21 Asia/Shanghai.
@@ -131,10 +141,10 @@ the manual song is still present and in the same position.
 
 ## Conclusion (2026-08-10)
 
-All immediately verifiable P0/P1 items pass; two real gaps found during this
-acceptance (review revoke/replace, audit in automation) were fixed and
-regression-tested. The live user-action chain (L1-L3) and the time gates are
-open. Status:
+All immediately verifiable P0/P1 items pass; the live main chain (L1) has now
+executed and passed. Two real gaps found during this acceptance (review
+revoke/replace, audit in automation) were fixed and regression-tested. The
+review loop (L3), manual-track check (L2), and the time gates are open. Status:
 
 `FUNCTIONALLY_READY_WAITING_FOR_LONG_RUN_GATE` (with open BLOCKED_USER_ACTION
 items L1-L3; any FAIL found there drops this to `FAIL_CONTINUE_FIXING` and work

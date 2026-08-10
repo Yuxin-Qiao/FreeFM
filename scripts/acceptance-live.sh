@@ -34,6 +34,9 @@ record() {
      account_vip_type,
      client_calls,
      http_requests} else {} end' 2>/dev/null || printf '{}')
+  if [ -z "$payload" ]; then
+    payload='{}'
+  fi
   jq -cn --arg step "$step" --argjson code "$code" --argjson payload "$payload" \
     '{accepted_at: (now | todate), step: $step, exit: $code, payload: $payload}' \
     >>"$evidence"
@@ -43,6 +46,20 @@ record() {
 run() {
   label=$1
   shift
+  interactive=0
+  if [ "${1:-}" = "--interactive" ]; then
+    interactive=1
+    shift
+  fi
+  if [ "$interactive" = "1" ]; then
+    set +e
+    "$binary" "$@"
+    code=$?
+    set -e
+    record "$label" "$code" ""
+    echo "== $label (exit $code)"
+    return
+  fi
   set +e
   output=$("$binary" "$@" 2>&1)
   code=$?
@@ -55,7 +72,11 @@ run() {
 echo "=== FreeFM live acceptance (fresh data dir: $data_dir) ==="
 echo "如果当前账号已有 FreeFM · Auto，脚本会验证 owner 后复用，不会新建第二张。"
 
-run "auth" auth --data-dir "$data_dir"
+if [ -s "$data_dir/session.json" ]; then
+  echo "已存在会话，跳过 auth（如需重新登录请删除 $data_dir/session.json）。"
+else
+  run "auth" --interactive auth --data-dir "$data_dir"
+fi
 
 run "status-after-restart" status --json --data-dir "$data_dir"
 
@@ -74,4 +95,4 @@ run "audit-quiet" audit --quiet --data-dir "$data_dir"
 echo
 echo "完成。脱敏汇总记录在：$evidence"
 echo "对照 checklist（FUNCTIONAL-ACCEPTANCE.md 的 BLOCKED_USER_ACTION 章节）逐项确认："
-jq -r '"  " + .accepted_at + "  step=" + .payload.step + "  exit=" + (.payload.exit|tostring)' "$evidence"
+jq -r '"  " + .accepted_at + "  step=" + .step + "  exit=" + (.exit|tostring) + "  payload=" + (.payload|tostring)' "$evidence"
