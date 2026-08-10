@@ -42,6 +42,9 @@
 - +24h：2026-08-10 23:21:34（Asia/Shanghai）。
 - +7d：2026-08-16 23:21:34（Asia/Shanghai）。
 - +7d 全部门禁完成前，Hermes `freefm-hourly` 保持暂停，不建立其他周期 `sync`。
+- +7d 到达后可直接运行 `scripts/release-closeout.sh`（验证时间门槛、移除观察
+  LaunchAgent、本地全门禁、main 干净、打 tag 并等待 Release workflow、更新并验证
+  Homebrew tap、恢复 Hermes no-agent cron）；每步 fail-closed。
 
 ## 1. 角色与交付规则
 

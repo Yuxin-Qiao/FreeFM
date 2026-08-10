@@ -149,3 +149,23 @@ fixture suite (43 lib + 4 TUI tests passing):
 Live-account behavior of `audit` and `review` (including the FM-queue
 consumption question) is pending the human-in-the-loop experiment in
 `scripts/fm-queue-experiment.sh`; no result is claimed here until it runs.
+
+## FM-queue consumption experiment (2026-08-10, run by the account owner)
+
+Procedure: pause the read-only observation LaunchAgent; the owner opens the
+official NetEase client Private FM and notes the first track without playing,
+skipping, or scrubbing; FreeFM performs one pure `preview` fetch (no
+playback/skip/trash/scrobble); the owner re-opens the client and compares.
+Only salted track hashes, aggregate counts, and the owner's `y/n/u` answer are
+persisted in `~/.freefm-validation/fmqueue-experiment.jsonl`.
+
+Result: two independent runs at 2026-08-10 15:20:07Z and 15:20:25Z, both with
+`official_queue_advanced = "n"` (the owner saw no advancement or change in the
+client-side Private FM queue after a 3-track, 15-HTTP-request read-only fetch).
+This is a subjective n=2 observation, not a proof: the client queue is
+client-local state and the server continues to return fresh recommendation
+batches on each fetch. Current stance: treat passive fetch as "auto-sample new
+recommendations" with no observed client-queue consumption; keep the
+conservative 6-hour default recommendation and do not increase frequency based
+on this result. If a later sample shows queue advancement, reduce frequency or
+add an explicit user opt-in.
