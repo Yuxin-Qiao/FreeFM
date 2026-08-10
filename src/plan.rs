@@ -55,6 +55,20 @@ pub(crate) struct PlanReport {
 }
 
 pub(crate) fn account_uid(body: &Value) -> AppResult<String> {
+    let top_code = body.get("code").and_then(Value::as_i64);
+    let inner_code = body.pointer("/data/code").and_then(Value::as_i64);
+    if matches!(top_code, Some(301) | Some(401) | Some(403))
+        || matches!(inner_code, Some(301) | Some(401) | Some(403))
+    {
+        return Err(AppError::LoginRequired);
+    }
+    if (body.get("account").is_some_and(Value::is_null)
+        && body.get("profile").is_some_and(Value::is_null))
+        || (body.pointer("/data/account").is_some_and(Value::is_null)
+            && body.pointer("/data/profile").is_some_and(Value::is_null))
+    {
+        return Err(AppError::LoginRequired);
+    }
     body.pointer("/account/id")
         .and_then(value_id_ref)
         .or_else(|| body.pointer("/profile/userId").and_then(value_id_ref))

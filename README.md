@@ -39,30 +39,45 @@ evidence** that an ordinary account can play them free, in full:
 - **Zero resident cost**: one-shot CLI, exits after each run. No daemon, no
   database, no web server, no LLM.
 
+## Three Core Principles
+
+1. **No VIP Unlocking**: Never unlocks VIP/restricted audio, replaces playback URLs, bypasses DRM, or downloads media.
+2. **No Resident Daemon**: One-shot CLI that exits after each run. Zero background processes, zero RAM when idle.
+3. **No LLM During Scheduled Sync**: Scheduled automation executes `freefm sync --quiet` deterministically with **zero LLM tokens**.
+
 ## Quick start
 
-```sh
-cargo install --git https://github.com/Yuxin-Qiao/FreeFM --locked
+### 1. Install precompiled binary (macOS / Linux)
 
-freefm tui           # guided terminal UI (includes settings page)
-freefm auth          # scan with the official NetEase client
-freefm preview       # read-only: additions / candidates / skips
-freefm sync          # append-only remote write
-freefm sync --quiet  # scheduler path; silent on success
+```sh
+curl -fsSL https://raw.githubusercontent.com/Yuxin-Qiao/FreeFM/main/scripts/install.sh | sh
 ```
 
-Credentials stay under `~/.freefm/` — never logged, never uploaded. Never paste a
-cookie, `MUSIC_U`, session, or QR key into an AI chat. The Homebrew tap opens
-with the first stable tag.
+*(Alternatively for Rust developers: `cargo install --git https://github.com/Yuxin-Qiao/FreeFM --locked`)*
+
+### 2. Run FreeFM
+
+```sh
+freefm auth          # Scan QR code with official NetEase client
+freefm preview       # Read-only preview: show additions, candidates, skips
+freefm sync          # Append-only remote write to "FreeFM · Auto" playlist
+freefm sync --quiet  # Scheduler path; silent on success
+
+# Optional guided terminal UI:
+freefm tui
+```
+
+Credentials stay local under `~/.freefm/` — never logged, never uploaded. Never paste a
+cookie, `MUSIC_U`, session, or QR key into an AI chat.
 
 ### Ask an AI to install it
 
 ```text
 Install FreeFM from https://github.com/Yuxin-Qiao/FreeFM on this macOS or Linux
 machine. Read AGENTS.md and README.zh-CN.md first. Never ask for, inspect, print,
-or upload NetEase cookies, MUSIC_U, sessions, or QR keys. Install with
-`cargo install --git https://github.com/Yuxin-Qiao/FreeFM --locked`. Let me run
-`freefm auth` in a visible terminal and scan the QR myself. Run `preview` first;
+or upload NetEase cookies, MUSIC_U, sessions, or QR keys. Install using
+`curl -fsSL https://raw.githubusercontent.com/Yuxin-Qiao/FreeFM/main/scripts/install.sh | sh`.
+Let me run `freefm auth` in a visible terminal and scan the QR myself. Run `preview` first;
 ask before `sync` or scheduler changes. Scheduled sync must execute
 `freefm sync --quiet` directly without an Agent/LLM turn. On permission, login,
 or API errors, give redacted guidance only; never change DNS, VPN, or proxies.

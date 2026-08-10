@@ -36,20 +36,36 @@ FreeFM 读取网易云私人 FM，只把**普通账号有明确正证据可免�
 - **零常驻**：单次执行后立即退出，空闲时 0 进程、0 RAM、0 CPU，无数据库、无 Web
   服务、无 LLM。
 
+## 三大核心原则
+
+1. **不破解 VIP**：绝不破解 VIP/受限歌曲、不替换播放地址、不绕过 DRM、不下载音频。
+2. **无常驻后台**：单次执行、用完即退出。0 常驻进程、空闲时 0 RAM 0 CPU。
+3. **定时同步零 LLM**：定时任务直接运行确定性 CLI 命令 `freefm sync --quiet`，**消耗 0 个 LLM token**。
+
 ## 快速开始
 
-```sh
-cargo install --git https://github.com/Yuxin-Qiao/FreeFM --locked
+### 1. 一键安装预编译二进制（macOS / Linux）
 
-freefm tui           # 推荐：终端交互界面（含设置页）
-freefm auth          # 用网易云官方客户端扫码
-freefm preview       # 只读预览将加入 / 候选 / 跳过
-freefm sync          # 只追加写入
+```sh
+curl -fsSL https://raw.githubusercontent.com/Yuxin-Qiao/FreeFM/main/scripts/install.sh | sh
+```
+
+*(Rust 开发者亦可使用：`cargo install --git https://github.com/Yuxin-Qiao/FreeFM --locked`)*
+
+### 2. 使用 FreeFM
+
+```sh
+freefm auth          # 用网易云官方客户端扫码登录
+freefm preview       # 只读预览：展示将加入 / 候选 / 跳过
+freefm sync          # 只追加写入到 "FreeFM · Auto" 歌单
 freefm sync --quiet  # 定时任务路径；成功时无输出
+
+# 终端交互界面：
+freefm tui
 ```
 
 凭证只保存在 `~/.freefm/`，不写日志、不上传；不要把 Cookie、`MUSIC_U`、session 或
-二维码 key 发给任何人或 AI。Homebrew tap 随首个稳定 tag 开放。
+二维码 key 发给任何人或 AI。
 
 ### 让 AI 帮你安装
 
@@ -61,7 +77,7 @@ https://github.com/Yuxin-Qiao/FreeFM
 
 先阅读 AGENTS.md 和 README.zh-CN.md。禁止索取、读取、打印或上传网易云 Cookie、
 MUSIC_U、session 和二维码 key。使用
-`cargo install --git https://github.com/Yuxin-Qiao/FreeFM --locked` 安装。
+`curl -fsSL https://raw.githubusercontent.com/Yuxin-Qiao/FreeFM/main/scripts/install.sh | sh` 安装。
 让我本人在可见终端运行 `freefm auth` 并扫码。先运行 `freefm preview`；未经我确认，
 不要运行 sync 或修改定时任务。定时同步必须直接执行 `freefm sync --quiet`，不能
 启动 Agent/LLM。遇到权限、登录或接口错误时只给脱敏提示，不要改 DNS、VPN、代理。

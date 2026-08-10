@@ -33,12 +33,15 @@ mod tests {
         privilege_i64, same_recording_score, song_from_value,
     };
     use crate::error::AppResult;
-    use crate::plan::{Action, build_plan, select_playlist};
+    use crate::plan::{Action, account_uid, build_plan, select_playlist};
     use crate::protocol::{
         PLAYLIST_NAME, RemoteApi, playlist_detail_extra_requests, playlist_track_ids,
     };
     use crate::render::{is_login_error, rendered_output};
-    use crate::storage::{SessionFile, StateFile, SyncLock, load_session, load_state, now_seconds};
+    use crate::storage::{
+        SessionFile, StateFile, StoredCookie, SyncLock, load_session, load_state, now_seconds,
+        restrict_dir, write_private_json,
+    };
     use crate::sync::{AccountContext, require_login, require_ordinary_account, sync};
     use serde_json::{Value, json};
     use std::collections::{HashMap, HashSet};
@@ -933,6 +936,83 @@ mod tests {
         child.wait().unwrap();
         let recovered = SyncLock::acquire(&paths).unwrap();
         drop(recovered);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn session_expiry_301_401_403_and_null_account_fail_closed() {
+        assert!(matches!(
+            account_uid(&json!({"code": 301, "msg": "未登录"})),
+            Err(AppError::LoginRequired)
+        ));
+        assert!(matches!(
+            account_uid(&json!({"code": 401, "msg": "Token expired"})),
+            Err(AppError::LoginRequired)
+        ));
+        assert!(matches!(
+            account_uid(&json!({"code": 403, "msg": "Forbidden"})),
+            Err(AppError::LoginRequired)
+        ));
+        assert!(matches!(
+            account_uid(&json!({"code": 200, "data": {"code": 301}})),
+            Err(AppError::LoginRequired)
+        ));
+        assert!(matches!(
+            account_uid(&json!({"code": 200, "account": null, "profile": null})),
+            Err(AppError::LoginRequired)
+        ));
+    }
+
+    #[test]
+    fn reauth_preserves_state_json_and_playlist_binding() {
+        let root = std::env::temp_dir().join(format!(
+            "freefm-reauth-test-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let paths = Paths { root: root.clone() };
+        restrict_dir(&paths.root).unwrap();
+
+        // 1. Initial sync state saved
+        let initial_state = StateFile {
+            playlist_id: Some("target-playlist-123".to_string()),
+            last_sync_at: Some(1700000000),
+        };
+        write_private_json(&paths.state(), &initial_state).unwrap();
+
+        // 2. Initial session saved
+        let session1 = SessionFile {
+            cookies: vec![StoredCookie {
+                name: "MUSIC_U".to_string(),
+                value: "old_token_123".to_string(),
+            }],
+        };
+        write_private_json(&paths.session(), &session1).unwrap();
+
+        // 3. Simulate re-authentication saving a new session token
+        let session2 = SessionFile {
+            cookies: vec![StoredCookie {
+                name: "MUSIC_U".to_string(),
+                value: "new_token_456".to_string(),
+            }],
+        };
+        write_private_json(&paths.session(), &session2).unwrap();
+
+        // 4. Verify state.json was NOT overwritten or wiped
+        let (loaded_state, corrupt) = load_state(&paths).unwrap();
+        assert!(!corrupt);
+        assert_eq!(
+            loaded_state.playlist_id.as_deref(),
+            Some("target-playlist-123")
+        );
+        assert_eq!(loaded_state.last_sync_at, Some(1700000000));
+
+        let loaded_session = load_session(&paths).unwrap().unwrap();
+        assert_eq!(loaded_session.cookies[0].value, "new_token_456");
+
         let _ = fs::remove_dir_all(root);
     }
 }
