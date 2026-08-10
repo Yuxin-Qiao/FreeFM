@@ -41,10 +41,10 @@ native Rust CLI with no LLM, daemon, Node, Python, or Docker.
 | A-15 | `audit --quiet`: silent on healthy, exit 3 + structured output on attention | static/live | PASS | healthy live run silent with exit 0 (16:10Z); exit-3 attention path covered by fixture classification + static exit-code wiring |
 | A-16 | Audit attention reaches unattended automation | static | PASS | new `freefm-audit.sh` helper pair, OpenClaw `--every 24h` + Hermes `0 3 * * *` examples, CI compares both copies, WorkBuddy ZIP includes it |
 | A-17 | `review` reject: no mapping, no remote writes | fixture+live | PASS | live 2026-08-11 00:12 CST: answered `n` for candidate "不只爱情", run reported skipped=1 approved=0, no `trusted.json` created (0600 dir unchanged); fixture `review_without_confirmation_writes_nothing` |
-| A-18 | `review` approve: prompt content, explicit `y`, local persist, no immediate remote write | fixture | PASS | `review_persists_only_explicit_confirmation`; live run pending (L3) |
-| A-19 | Trusted mapping survives process restart | fixture | PASS | `trusted_store_roundtrip_and_corrupt_recovery` (save/load); live restart pending (L3) |
-| A-20 | Trusted target re-verified free on every use; stops when restricted/unavailable/unknown | fixture | PASS | `trusted_mapping_is_used_only_while_target_still_free`, `trusted_target_becoming_restricted_stops_usage` |
-| A-21 | Trusted mapping revoke/replace: user can remove or overwrite; no silent duplicates | fixture | PASS | `review_remove_deletes_only_requested_mapping`, `review_replaces_stale_mapping_with_new_confirmation` (new in this batch) |
+| A-18 | `review` approve: prompt content, explicit `y`, local persist, no immediate remote write | fixture+live | PASS | live 2026-08-11 00:24 CST: candidate "Casablanca" approved with `y`; review reported approved=1; `trusted.json` (0600) contains only original_id -> {target_id, approved_at}, no URL/title; no remote mutation (fixture: `review_persists_only_explicit_confirmation`) |
+| A-19 | Trusted mapping survives process restart | fixture+live | PASS | mapping re-read from disk by later independent processes (preview runs after review); fixture `trusted_store_roundtrip_and_corrupt_recovery` |
+| A-20 | Trusted target re-verified free on every use; stops when restricted/unavailable/unknown | fixture | PASS | `trusted_mapping_is_used_only_while_target_still_free`, `trusted_target_becoming_restricted_stops_usage`; live re-hit of the same original awaits natural FM rotation (8 low-frequency attempts, no repeat) |
+| A-21 | Trusted mapping revoke/replace: user can remove or overwrite; no silent duplicates | fixture+live | PASS | live 2026-08-11 00:51 CST: review listed the mapping, index `0` removed it, `trusted.json` reverted to empty; fixtures `review_remove_deletes_only_requested_mapping`, `review_replaces_stale_mapping_with_new_confirmation` |
 | A-22 | Re-auth keeps playlist binding, added_song_ids, trusted mappings | fixture | PASS | `reauth_preserves_state_json_and_playlist_binding`, `sync_records_added_song_ids_and_old_state_stays_compatible`; live pending |
 | A-23 | JSON/quiet/exit codes stable and documented | static | PASS | exit-code matrix below; all five `--json` commands validated as parseable JSON with no secrets |
 | A-24 | 500+ playlist tracks pagination | fixture | PASS | `playlist_track_parser_handles_more_than_500_ids` |
@@ -126,12 +126,14 @@ the manual song is still present and in the same position.
    remove; verify `trusted.json` no longer contains it.
 
 Status: reject path PASS (2026-08-11 00:12 CST, candidate "不只爱情" declined,
-no mapping written). The approve path was interrupted by a NetEase server-side
-rate limit: after ~37 rapid review loops the Private FM endpoint began
-returning HTTP 405 while `status` kept working (account healthy). This is an
-external/server-controlled condition; the loop pauses for a cooldown and
-resumes at a low frequency. Observation also recorded in V01: burst polling of
-the FM endpoint triggers 405, reinforcing the conservative 6-hour default.
+no mapping written). Approve path PASS (00:24 CST, "Casablanca"
+1376177869 -> 5199197 approved and persisted). A NetEase server-side rate
+limit (HTTP 405 on the FM endpoint after ~37 rapid loops, `status` unaffected)
+interrupted the loop once; after cooldown low-frequency runs work again. Burst
+polling of the FM endpoint triggers 405, reinforcing the conservative 6-hour
+default. Revoke executed live at 00:51 CST (mapping removed). The live
+`trusted_mapping` re-hit (same original reappearing) is pending natural FM
+rotation and is covered by fixture tests.
 
 ## BLOCKED_EXTERNAL
 
