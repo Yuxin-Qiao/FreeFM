@@ -27,6 +27,10 @@ directly without a model turn.
   URLs.
 - Never unlock restricted content, replace audio URLs, download audio, or
   automatically substitute a searched recording.
+- `freefm review` is the only way a free-version candidate becomes trusted: an
+  explicit user `y` in the interactive prompt. Never infer a mapping yourself.
+- Prefer `freefm audit --quiet` for routine checks: it is read-only and exits 3
+  when a saved track needs attention. Never delete or repair saved tracks.
 - Run `preview` before the first `sync`. Only `sync` may write remotely.
 - Do not schedule until one manual preview and one manual sync have succeeded.
 
@@ -52,6 +56,8 @@ freefm tui
 freefm auth
 freefm status --json
 freefm preview --json
+freefm audit --json
+freefm review
 freefm sync
 freefm sync --quiet
 ```
@@ -70,8 +76,8 @@ Resolve the absolute binary path first. Create an operator-admin command job
 with exact argv, no delivery, and no Agent/model payload:
 
 ```sh
-openclaw automations add --every 1h \
-  --name freefm-hourly \
+openclaw automations add --every 6h \
+  --name freefm-sync \
   --command-argv '["/absolute/path/to/freefm","sync","--quiet"]' \
   --no-deliver \
   --timeout-seconds 120
@@ -110,8 +116,8 @@ rm -f "$helper"
 Then create the job:
 
 ```sh
-hermes cron create "0 * * * *" \
-  --name freefm-hourly \
+hermes cron create "0 */6 * * *" \
+  --name freefm-sync \
   --script freefm-sync.sh \
   --no-agent
 ```
@@ -157,6 +163,8 @@ enabling it.
 
 - `freefm status --json` reports an authenticated ordinary account.
 - `freefm preview --json` reports decisions without creating or appending.
+- `freefm audit --quiet` exits 0 with no output when every saved track is still
+  free, and exits 3 with a structured report when attention is needed.
 - A repeated `freefm sync --quiet` exits zero with empty stdout and stderr.
 - The scheduler history reports success and no Agent/model invocation.
 - FreeFM is absent from the process list between scheduled runs.

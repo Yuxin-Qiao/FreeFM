@@ -52,6 +52,7 @@ pub(crate) fn sync<R: RemoteApi>(
         }
     };
     let existing = remote.playlist_tracks(&playlist_id)?;
+    let (mut state, _) = load_state(paths)?;
     let ids_to_add = report
         .would_add_ids
         .iter()
@@ -66,8 +67,12 @@ pub(crate) fn sync<R: RemoteApi>(
         if !verified {
             return Err(AppError::Remote("歌单写入后复读未找到全部歌曲".to_string()));
         }
+        for id in &ids_to_add {
+            if !state.added_song_ids.contains(id) {
+                state.added_song_ids.push(id.clone());
+            }
+        }
     }
-    let (mut state, _) = load_state(paths)?;
     state.playlist_id = Some(playlist_id.clone());
     state.last_sync_at = Some(now_seconds());
     write_private_json(&paths.state(), &state)?;

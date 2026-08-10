@@ -32,7 +32,11 @@ FreeFM reads NetEase Private FM and append-only maintains your owned
 evidence** that an ordinary account can play them free, in full:
 
 - **Strict proof**: missing, malformed, or contradictory entitlement data is
-  skipped. Similar free releases are preview-only in v0.1; never auto-swapped.
+  skipped. Similar free releases are never auto-swapped: `preview` shows them
+  as candidates, and `freefm review` lets you approve a trusted mapping once.
+- **Long-lived**: `freefm audit` re-checks every saved track with the same
+  strict logic (`still_free` / `became_restricted` / `unavailable` / `unknown`)
+  and never modifies the playlist. v0.1 never auto-repairs.
 - **Append-only**: `preview` is read-only; only `sync` writes. Repeated and
   concurrent runs dedupe by remote ID — no deletes, no reorders, no touching
   tracks you added by hand.
@@ -60,6 +64,8 @@ curl -fsSL https://raw.githubusercontent.com/Yuxin-Qiao/FreeFM/main/scripts/inst
 ```sh
 freefm auth          # Scan QR code with official NetEase client
 freefm preview       # Read-only preview: show additions, candidates, skips
+freefm audit         # Read-only: re-check saved tracks still play free (exit 3 = attention)
+freefm review        # Interactive: approve a free-version candidate once (local only)
 freefm sync          # Append-only remote write to "FreeFM · Auto" playlist
 freefm sync --quiet  # Scheduler path; silent on success
 
@@ -97,6 +103,8 @@ CLI, never the TUI.
 |---|---:|---|
 | `freefm auth` | No | Official-client QR login |
 | `freefm preview` | No | Show additions, candidates, skips |
+| `freefm audit` | No | Re-check saved tracks: still_free / became_restricted / unavailable / unknown |
+| `freefm review` | Local only | Approve a candidate as a trusted free version; never writes remotely |
 | `freefm sync` | Append only | Add strictly verified free originals |
 | `freefm status` | No | Check local session and account |
 | `freefm doctor` | No | Check permissions, state, and API shape |
@@ -120,10 +128,14 @@ its deterministic command. Routine scheduled sync uses **zero LLM tokens**.
 OpenClaw example:
 
 ```sh
-openclaw automations add --every 1h --name freefm-hourly \
+openclaw automations add --every 6h --name freefm-sync \
   --command-argv '["/absolute/path/to/freefm","sync","--quiet"]' \
   --no-deliver --timeout-seconds 120
 ```
+
+The conservative default is every 6 hours so the playlist grows slowly;
+FreeFM itself has no built-in scheduler, so you may run it more or less often
+as you prefer.
 
 Build the WorkBuddy package with `scripts/package-workbuddy.sh`; import the ZIP
 under the Tencent WorkBuddy skill uploader. Do not enable unattended sync before
@@ -151,7 +163,9 @@ Ambiguous playlist targets fail closed; a local lock prevents concurrent
 creation and appends. Error codes: `login_required` → re-run `auth`;
 `ordinary_account_required` → account does not qualify;
 `api_incompatible` → API changed, pause scheduling and file a redacted issue;
-`concurrent_sync` → another run is in progress.
+`concurrent_sync` → another run is in progress. `freefm audit` exits 0 when
+every saved track is still free and 3 when any track needs attention; it never
+deletes, replaces, or reorders anything.
 
 ## Validation and docs
 

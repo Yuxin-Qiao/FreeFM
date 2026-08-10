@@ -5,7 +5,7 @@ use crate::domain::{
 };
 use crate::error::{AppError, AppResult};
 use crate::protocol::{PLAYLIST_NAME, RemoteApi};
-use crate::storage::StateFile;
+use crate::storage::{StateFile, TrustedStore};
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashSet;
@@ -15,6 +15,7 @@ use std::collections::HashSet;
 pub(crate) enum Action {
     #[allow(dead_code)]
     AddOriginal,
+    TrustedMapping,
     CandidateOnly,
     Skip,
     AlreadyPresent,
@@ -25,6 +26,7 @@ pub(crate) struct Decision {
     pub(crate) original_id: String,
     pub(crate) original_title: String,
     pub(crate) original_artist: String,
+    pub(crate) original_duration_ms: Option<i64>,
     pub(crate) action: Action,
     pub(crate) availability: Availability,
     pub(crate) availability_evidence: AvailabilityEvidence,
@@ -32,7 +34,10 @@ pub(crate) struct Decision {
     pub(crate) selected_title: Option<String>,
     pub(crate) selected_artist: Option<String>,
     pub(crate) selected_duration_ms: Option<i64>,
+    pub(crate) selected_album: Option<String>,
     pub(crate) selected_version_markers: Vec<String>,
+    pub(crate) trusted_mapping: bool,
+    pub(crate) trusted_invalid: bool,
     pub(crate) reason: String,
 }
 
@@ -52,6 +57,7 @@ pub(crate) struct PlanReport {
     pub(crate) client_calls: u64,
     pub(crate) http_requests: u64,
     pub(crate) state_corrupt_recovered: bool,
+    pub(crate) trusted_corrupt_recovered: bool,
 }
 
 pub(crate) fn account_uid(body: &Value) -> AppResult<String> {
@@ -109,6 +115,7 @@ pub(crate) fn build_plan<R: RemoteApi>(
     remote: &mut R,
     uid: &str,
     state: &StateFile,
+    trusted: &TrustedStore,
     command: &str,
     state_corrupt_recovered: bool,
 ) -> AppResult<PlanReport> {
@@ -152,68 +159,104 @@ pub(crate) fn build_plan<R: RemoteApi>(
         let original_probe = remote.playback_probe(&original.id)?;
         let original_availability = availability_from_fields(&original, Some(original_probe));
         let original_evidence = availability_evidence(&original, original_probe);
-        let (action, selected, reason) = if original_availability == Availability::Free {
+        let (action, selected, reason, trusted_mapping, trusted_invalid) = if original_availability
+            == Availability::Free
+        {
             (
                 Action::AddOriginal,
                 Some(original.clone()),
                 "原歌曲 privilege 表明普通账号可完整播放".to_string(),
+                false,
+                false,
             )
         } else {
-            let search_results = remote.search(&original.name)?;
-            let search_ids = search_results
-                .iter()
-                .map(|song| song.id.clone())
-                .collect::<Vec<_>>();
-            let searched_details = remote.details(&search_ids)?;
-            let mut best = None;
-            for result in search_results {
-                let candidate = merge_song_metadata(&result, searched_details.get(&result.id));
-                let Some(score) = same_recording_score(&original, &candidate) else {
-                    continue;
-                };
-                let preliminary = availability_from_fields(&candidate, None);
-                if matches!(
-                    preliminary,
-                    Availability::Restricted | Availability::Unavailable
-                ) {
-                    continue;
+            // A user-approved trusted mapping wins deterministically, but only
+            // while the approved target still passes the strict free check.
+            let mut trusted_target = None;
+            let mut trusted_stale = false;
+            if let Some(mapping) = trusted.mappings.get(&original.id) {
+                let target_details = remote.details(std::slice::from_ref(&mapping.target_id))?;
+                if let Some(target) = target_details.get(&mapping.target_id).cloned() {
+                    let target = merge_song_metadata(&target, None);
+                    let target_probe = remote.playback_probe(&target.id)?;
+                    if availability_from_fields(&target, Some(target_probe)) == Availability::Free {
+                        trusted_target = Some(target);
+                    }
                 }
-                let candidate_probe = remote.playback_probe(&candidate.id)?;
-                if availability_from_fields(&candidate, Some(candidate_probe)) != Availability::Free
-                {
-                    continue;
-                }
-                if best
-                    .as_ref()
-                    .is_none_or(|(_, current_score): &(Song, f32)| score > *current_score)
-                {
-                    best = Some((candidate, score));
+                if trusted_target.is_none() {
+                    trusted_stale = true;
                 }
             }
-            if let Some((candidate, _score)) = best {
+            if let Some(target) = trusted_target {
                 (
-                    Action::CandidateOnly,
-                    Some(candidate),
-                    "原歌曲受限；免费同曲候选仅供预览，v0.1 不自动替换".to_string(),
+                    Action::TrustedMapping,
+                    Some(target),
+                    "用户确认过的 trusted mapping；已验证该免费版本当前仍可完整播放".to_string(),
+                    true,
+                    false,
                 )
             } else {
-                (
-                    Action::Skip,
-                    None,
-                    match original_availability {
-                        Availability::Unavailable => {
-                            "原歌曲不可用且没有高置信度免费同曲".to_string()
-                        }
-                        Availability::Restricted => {
-                            "原歌曲需要 VIP/购买且没有高置信度免费同曲".to_string()
-                        }
-                        _ => "播放权限未知，按安全原则跳过".to_string(),
-                    },
-                )
+                let search_results = remote.search(&original.name)?;
+                let search_ids = search_results
+                    .iter()
+                    .map(|song| song.id.clone())
+                    .collect::<Vec<_>>();
+                let searched_details = remote.details(&search_ids)?;
+                let mut best = None;
+                for result in search_results {
+                    let candidate = merge_song_metadata(&result, searched_details.get(&result.id));
+                    let Some(score) = same_recording_score(&original, &candidate) else {
+                        continue;
+                    };
+                    let preliminary = availability_from_fields(&candidate, None);
+                    if matches!(
+                        preliminary,
+                        Availability::Restricted | Availability::Unavailable
+                    ) {
+                        continue;
+                    }
+                    let candidate_probe = remote.playback_probe(&candidate.id)?;
+                    if availability_from_fields(&candidate, Some(candidate_probe))
+                        != Availability::Free
+                    {
+                        continue;
+                    }
+                    if best
+                        .as_ref()
+                        .is_none_or(|(_, current_score): &(Song, f32)| score > *current_score)
+                    {
+                        best = Some((candidate, score));
+                    }
+                }
+                if let Some((candidate, _score)) = best {
+                    (
+                        Action::CandidateOnly,
+                        Some(candidate),
+                        "原歌曲受限；免费同曲候选仅供人工 review，v0.1 不自动替换".to_string(),
+                        false,
+                        trusted_stale,
+                    )
+                } else {
+                    (
+                        Action::Skip,
+                        None,
+                        match original_availability {
+                            Availability::Unavailable => {
+                                "原歌曲不可用且没有高置信度免费同曲".to_string()
+                            }
+                            Availability::Restricted => {
+                                "原歌曲需要 VIP/购买且没有高置信度免费同曲".to_string()
+                            }
+                            _ => "播放权限未知，按安全原则跳过".to_string(),
+                        },
+                        false,
+                        trusted_stale,
+                    )
+                }
             }
         };
         let selected_id = selected.as_ref().map(|song| song.id.clone());
-        let duplicate = matches!(action, Action::AddOriginal)
+        let duplicate = matches!(action, Action::AddOriginal | Action::TrustedMapping)
             && selected_id
                 .as_ref()
                 .is_some_and(|id| existing.contains(id) || !planned_ids.insert(id.clone()));
@@ -222,7 +265,7 @@ pub(crate) fn build_plan<R: RemoteApi>(
         } else {
             action
         };
-        if matches!(final_action, Action::AddOriginal) {
+        if matches!(final_action, Action::AddOriginal | Action::TrustedMapping) {
             if let Some(id) = &selected_id {
                 candidates_to_add.push(id.clone());
             }
@@ -231,6 +274,7 @@ pub(crate) fn build_plan<R: RemoteApi>(
             original_id: original.id.clone(),
             original_title: original.name.clone(),
             original_artist: original.artists.join("、"),
+            original_duration_ms: original.duration_ms,
             action: final_action,
             availability: original_availability,
             availability_evidence: original_evidence,
@@ -238,10 +282,13 @@ pub(crate) fn build_plan<R: RemoteApi>(
             selected_title: selected.as_ref().map(|song| song.name.clone()),
             selected_artist: selected.as_ref().map(|song| song.artists.join("、")),
             selected_duration_ms: selected.as_ref().and_then(|song| song.duration_ms),
+            selected_album: selected.as_ref().and_then(|song| song.album.clone()),
             selected_version_markers: selected
                 .as_ref()
                 .map(sorted_version_markers)
                 .unwrap_or_default(),
+            trusted_mapping,
+            trusted_invalid,
             reason: if duplicate {
                 "已在 FreeFM · Auto 或本次计划中，保持幂等".to_string()
             } else {
@@ -264,5 +311,6 @@ pub(crate) fn build_plan<R: RemoteApi>(
         client_calls: remote.client_calls(),
         http_requests: remote.http_requests(),
         state_corrupt_recovered,
+        trusted_corrupt_recovered: false,
     })
 }

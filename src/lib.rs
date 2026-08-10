@@ -6,6 +6,7 @@ compile_error!("FreeFM v0.1 supports macOS and Linux only");
 
 pub const VERSION: &str = "0.1.0";
 
+mod audit;
 mod auth;
 mod cli;
 mod domain;
@@ -16,6 +17,7 @@ mod render;
 mod runner;
 mod storage;
 mod sync;
+mod trusted;
 
 pub use cli::Cli;
 pub use error::AppError;
@@ -27,6 +29,7 @@ pub use storage::Paths;
 mod tests {
     use super::*;
 
+    use crate::audit::audit;
     use crate::cli::usage;
     use crate::domain::{
         Availability, PlaylistSummary, Probe, Song, availability_from_fields, merge_song_metadata,
@@ -39,10 +42,11 @@ mod tests {
     };
     use crate::render::{is_login_error, rendered_output};
     use crate::storage::{
-        SessionFile, StateFile, StoredCookie, SyncLock, load_session, load_state, now_seconds,
-        restrict_dir, write_private_json,
+        SessionFile, StateFile, StoredCookie, SyncLock, TrustedStore, load_session, load_state,
+        load_trusted, now_seconds, restrict_dir, save_trusted, write_private_json,
     };
     use crate::sync::{AccountContext, require_login, require_ordinary_account, sync};
+    use crate::trusted::review;
     use serde_json::{Value, json};
     use std::collections::{HashMap, HashSet};
     use std::env;
@@ -673,7 +677,15 @@ mod tests {
     #[test]
     fn preview_plans_free_song_without_remote_write() {
         let mut remote = FakeRemote::free();
-        let report = build_plan(&mut remote, "u", &StateFile::default(), "preview", false).unwrap();
+        let report = build_plan(
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            &TrustedStore::default(),
+            "preview",
+            false,
+        )
+        .unwrap();
         assert_eq!(report.would_add_ids, vec!["1"]);
         assert!(report.would_create_playlist);
         assert_eq!(remote.create_calls, 0);
@@ -690,11 +702,27 @@ mod tests {
         let paths = Paths { root: root.clone() };
         let mut remote = FakeRemote::free();
         let (state, recovered) = load_state(&paths).unwrap();
-        let report = build_plan(&mut remote, "u", &state, "sync", recovered).unwrap();
+        let report = build_plan(
+            &mut remote,
+            "u",
+            &state,
+            &TrustedStore::default(),
+            "sync",
+            recovered,
+        )
+        .unwrap();
         sync(&paths, report, "u", &mut remote).unwrap();
         let (state, recovered) = load_state(&paths).unwrap();
         assert!(!recovered);
-        let report = build_plan(&mut remote, "u", &state, "sync", recovered).unwrap();
+        let report = build_plan(
+            &mut remote,
+            "u",
+            &state,
+            &TrustedStore::default(),
+            "sync",
+            recovered,
+        )
+        .unwrap();
         assert!(report.would_add_ids.is_empty());
         sync(&paths, report, "u", &mut remote).unwrap();
         assert_eq!(remote.create_calls, 1);
@@ -711,7 +739,14 @@ mod tests {
         ] {
             let mut remote = FakeRemote::free();
             remote.private_fm_failure = Some(failure);
-            let result = build_plan(&mut remote, "u", &StateFile::default(), "sync", false);
+            let result = build_plan(
+                &mut remote,
+                "u",
+                &StateFile::default(),
+                &TrustedStore::default(),
+                "sync",
+                false,
+            );
             assert!(result.is_err());
             assert_eq!(remote.create_calls, 0);
             assert_eq!(remote.add_calls, 0);
@@ -730,11 +765,27 @@ mod tests {
         ));
         let paths = Paths { root: root.clone() };
         let mut remote = FakeRemote::free();
-        let report = build_plan(&mut remote, "u", &StateFile::default(), "sync", false).unwrap();
+        let report = build_plan(
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            &TrustedStore::default(),
+            "sync",
+            false,
+        )
+        .unwrap();
         remote.create_after_side_effect_failure = true;
         assert!(sync(&paths, report, "u", &mut remote).is_err());
         remote.create_after_side_effect_failure = false;
-        let report = build_plan(&mut remote, "u", &StateFile::default(), "sync", false).unwrap();
+        let report = build_plan(
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            &TrustedStore::default(),
+            "sync",
+            false,
+        )
+        .unwrap();
         sync(&paths, report, "u", &mut remote).unwrap();
         assert_eq!(remote.create_calls, 1);
         assert_eq!(remote.add_calls, 1);
@@ -754,8 +805,15 @@ mod tests {
             ));
             let paths = Paths { root: root.clone() };
             let mut remote = FakeRemote::free();
-            let report =
-                build_plan(&mut remote, "u", &StateFile::default(), "sync", false).unwrap();
+            let report = build_plan(
+                &mut remote,
+                "u",
+                &StateFile::default(),
+                &TrustedStore::default(),
+                "sync",
+                false,
+            )
+            .unwrap();
             if fail_reread {
                 remote.track_failure_on_call = Some(2);
             } else {
@@ -764,8 +822,15 @@ mod tests {
             assert!(sync(&paths, report, "u", &mut remote).is_err());
             remote.track_failure_on_call = None;
             remote.add_after_side_effect_failure = false;
-            let report =
-                build_plan(&mut remote, "u", &StateFile::default(), "sync", false).unwrap();
+            let report = build_plan(
+                &mut remote,
+                "u",
+                &StateFile::default(),
+                &TrustedStore::default(),
+                "sync",
+                false,
+            )
+            .unwrap();
             assert!(report.would_add_ids.is_empty());
             sync(&paths, report, "u", &mut remote).unwrap();
             assert_eq!(remote.create_calls, 1);
@@ -789,13 +854,29 @@ mod tests {
         fs::write(&invalid_root, b"x").unwrap();
         let invalid_paths = Paths { root: invalid_root };
         let mut remote = FakeRemote::free();
-        let report = build_plan(&mut remote, "u", &StateFile::default(), "sync", false).unwrap();
+        let report = build_plan(
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            &TrustedStore::default(),
+            "sync",
+            false,
+        )
+        .unwrap();
         assert!(sync(&invalid_paths, report, "u", &mut remote).is_err());
 
         let valid_paths = Paths {
             root: parent.join("valid"),
         };
-        let report = build_plan(&mut remote, "u", &StateFile::default(), "sync", false).unwrap();
+        let report = build_plan(
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            &TrustedStore::default(),
+            "sync",
+            false,
+        )
+        .unwrap();
         assert!(report.would_add_ids.is_empty());
         sync(&valid_paths, report, "u", &mut remote).unwrap();
         assert_eq!(remote.create_calls, 1);
@@ -806,7 +887,15 @@ mod tests {
     #[test]
     fn restricted_song_candidate_is_preview_only() {
         let mut remote = FakeRemote::restricted_with_candidate();
-        let report = build_plan(&mut remote, "u", &StateFile::default(), "preview", false).unwrap();
+        let report = build_plan(
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            &TrustedStore::default(),
+            "preview",
+            false,
+        )
+        .unwrap();
         assert!(report.would_add_ids.is_empty());
         assert!(matches!(report.decisions[0].action, Action::CandidateOnly));
         assert_eq!(report.decisions[0].selected_id.as_deref(), Some("2"));
@@ -980,6 +1069,7 @@ mod tests {
         let initial_state = StateFile {
             playlist_id: Some("target-playlist-123".to_string()),
             last_sync_at: Some(1700000000),
+            added_song_ids: Vec::new(),
         };
         write_private_json(&paths.state(), &initial_state).unwrap();
 
@@ -1013,6 +1103,248 @@ mod tests {
         let loaded_session = load_session(&paths).unwrap().unwrap();
         assert_eq!(loaded_session.cookies[0].value, "new_token_456");
 
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn audit_is_read_only_and_classifies_every_status() {
+        let mut remote = FakeRemote::free();
+        remote.playlists = vec![PlaylistSummary {
+            id: "p1".to_string(),
+            name: PLAYLIST_NAME.to_string(),
+            track_count: 4,
+            owner_id: Some("u".to_string()),
+        }];
+        remote.tracks = HashSet::from([
+            "1".to_string(),
+            "2".to_string(),
+            "3".to_string(),
+            "4".to_string(),
+        ]);
+        let vip = song("2", "Vip", "Artist", 180_000, 1);
+        let unavailable = Song {
+            privilege: Some(json!({"fee": 0, "st": -200, "pl": 0})),
+            ..song("3", "Unavailable", "Artist", 180_000, 0)
+        };
+        let unknown = Song {
+            privilege: None,
+            fee: None,
+            ..song("4", "Unknown", "Artist", 180_000, 0)
+        };
+        remote.details.extend(HashMap::from([
+            (vip.id.clone(), vip),
+            (unavailable.id.clone(), unavailable),
+            (unknown.id.clone(), unknown),
+        ]));
+        let state = StateFile {
+            playlist_id: Some("p1".to_string()),
+            last_sync_at: None,
+            added_song_ids: Vec::new(),
+        };
+        let result = audit(&mut remote, "u", &state, false).unwrap();
+        assert_eq!(result["needs_attention"], true);
+        assert_eq!(result["summary"]["still_free"], 1);
+        assert_eq!(result["summary"]["became_restricted"], 1);
+        assert_eq!(result["summary"]["unavailable"], 1);
+        assert_eq!(result["summary"]["unknown"], 1);
+        assert_eq!(remote.create_calls, 0);
+        assert_eq!(remote.add_calls, 0);
+    }
+
+    #[test]
+    fn audit_without_playlist_is_healthy_and_read_only() {
+        let mut remote = FakeRemote::free();
+        remote.playlists = Vec::new();
+        let result = audit(&mut remote, "u", &StateFile::default(), false).unwrap();
+        assert_eq!(result["playlist_exists"], false);
+        assert_eq!(result["needs_attention"], false);
+        assert_eq!(result["checked_count"], 0);
+        assert_eq!(remote.create_calls, 0);
+        assert_eq!(remote.add_calls, 0);
+    }
+
+    #[test]
+    fn audit_fails_closed_on_ambiguous_playlists() {
+        let mut remote = FakeRemote::free();
+        remote.playlists = vec![
+            PlaylistSummary {
+                id: "p1".to_string(),
+                name: PLAYLIST_NAME.to_string(),
+                track_count: 0,
+                owner_id: Some("u".to_string()),
+            },
+            PlaylistSummary {
+                id: "p2".to_string(),
+                name: PLAYLIST_NAME.to_string(),
+                track_count: 0,
+                owner_id: Some("u".to_string()),
+            },
+        ];
+        let error = audit(&mut remote, "u", &StateFile::default(), false).unwrap_err();
+        assert!(matches!(error, AppError::AmbiguousPlaylist));
+    }
+
+    #[test]
+    fn trusted_mapping_is_used_only_while_target_still_free() {
+        let mut remote = FakeRemote::restricted_with_candidate();
+        let mut trusted = TrustedStore::default();
+        trusted.approve("1", "2");
+        let report = build_plan(
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            &trusted,
+            "preview",
+            false,
+        )
+        .unwrap();
+        let decision = &report.decisions[0];
+        assert!(matches!(decision.action, Action::TrustedMapping));
+        assert!(decision.trusted_mapping);
+        assert!(!decision.trusted_invalid);
+        assert_eq!(decision.selected_id.as_deref(), Some("2"));
+        assert!(report.would_add_ids.contains(&"2".to_string()));
+        let serialized = serde_json::to_value(&decision.action).unwrap();
+        assert_eq!(serialized, json!("trusted_mapping"));
+    }
+
+    #[test]
+    fn stale_trusted_mapping_falls_back_and_reports_invalid() {
+        let mut remote = FakeRemote::restricted_with_candidate();
+        let mut trusted = TrustedStore::default();
+        // Approved target "9" does not exist remotely.
+        trusted.approve("1", "9");
+        let report = build_plan(
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            &trusted,
+            "preview",
+            false,
+        )
+        .unwrap();
+        let decision = &report.decisions[0];
+        assert!(decision.trusted_invalid);
+        assert!(matches!(decision.action, Action::CandidateOnly));
+        assert!(!report.would_add_ids.contains(&"2".to_string()));
+    }
+
+    #[test]
+    fn trusted_target_becoming_restricted_stops_usage() {
+        let mut remote = FakeRemote::restricted_with_candidate();
+        let mut trusted = TrustedStore::default();
+        trusted.approve("1", "2");
+        remote.probes.get_mut("2").unwrap().fee = Some(1);
+        let report = build_plan(
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            &trusted,
+            "preview",
+            false,
+        )
+        .unwrap();
+        let decision = &report.decisions[0];
+        assert!(decision.trusted_invalid);
+        assert!(matches!(decision.action, Action::Skip));
+        assert!(report.would_add_ids.is_empty());
+    }
+
+    #[test]
+    fn trusted_store_roundtrip_and_corrupt_recovery() {
+        let root = env::temp_dir().join(format!("freefm-trusted-{}", now_seconds()));
+        let paths = Paths { root: root.clone() };
+        let mut store = TrustedStore::default();
+        store.approve("1", "2");
+        save_trusted(&paths, &store).unwrap();
+        let (loaded, corrupt) = load_trusted(&paths).unwrap();
+        assert!(!corrupt);
+        assert_eq!(loaded.mappings.get("1").unwrap().target_id, "2");
+        fs::write(paths.trusted(), "{not json").unwrap();
+        let (loaded, corrupt) = load_trusted(&paths).unwrap();
+        assert!(corrupt);
+        assert!(loaded.mappings.is_empty());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn review_persists_only_explicit_confirmation() {
+        let root = env::temp_dir().join(format!("freefm-review-{}", now_seconds()));
+        let paths = Paths { root: root.clone() };
+        let mut remote = FakeRemote::restricted_with_candidate();
+        let result = review(
+            &paths,
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            false,
+            true,
+            || true,
+        )
+        .unwrap();
+        assert_eq!(result["approved_count"], 1);
+        let (loaded, _) = load_trusted(&paths).unwrap();
+        assert_eq!(loaded.mappings.get("1").unwrap().target_id, "2");
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn review_without_confirmation_writes_nothing() {
+        let root = env::temp_dir().join(format!("freefm-review-skip-{}", now_seconds()));
+        let paths = Paths { root: root.clone() };
+        let mut remote = FakeRemote::restricted_with_candidate();
+        let result = review(
+            &paths,
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            false,
+            true,
+            || false,
+        )
+        .unwrap();
+        assert_eq!(result["approved_count"], 0);
+        assert_eq!(result["skipped_count"], 1);
+        assert!(!paths.trusted().exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn sync_records_added_song_ids_and_old_state_stays_compatible() {
+        let root = env::temp_dir().join(format!("freefm-added-{}", now_seconds()));
+        let paths = Paths { root: root.clone() };
+        restrict_dir(&paths.root).unwrap();
+        // Pre-existing state written by an older FreeFM has no added_song_ids.
+        fs::write(
+            paths.state(),
+            r#"{"playlist_id":"p1","last_sync_at":1700000000}"#,
+        )
+        .unwrap();
+        let (state, corrupt) = load_state(&paths).unwrap();
+        assert!(!corrupt);
+        assert!(state.added_song_ids.is_empty());
+
+        let mut remote = FakeRemote::free();
+        remote.playlists = vec![PlaylistSummary {
+            id: "p1".to_string(),
+            name: PLAYLIST_NAME.to_string(),
+            track_count: 0,
+            owner_id: Some("u".to_string()),
+        }];
+        let report = build_plan(
+            &mut remote,
+            "u",
+            &state,
+            &TrustedStore::default(),
+            "sync",
+            false,
+        )
+        .unwrap();
+        let synced = sync(&paths, report, "u", &mut remote).unwrap();
+        assert_eq!(synced.would_add_ids, vec!["1".to_string()]);
+        let (state2, corrupt2) = load_state(&paths).unwrap();
+        assert!(!corrupt2);
+        assert_eq!(state2.added_song_ids, vec!["1".to_string()]);
         let _ = fs::remove_dir_all(root);
     }
 }

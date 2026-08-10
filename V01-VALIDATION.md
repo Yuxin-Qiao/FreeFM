@@ -119,3 +119,33 @@ GitHub commit and moved both `alpha` and `latest` to that version.
 
 - Complete the running 7-day passive FM observation (gate: 2026-08-16 23:21 Asia/Shanghai) before enabling default unattended background synchronization.
 - Complete the signed Tencent WorkBuddy client import after interactive login.
+
+## Functional additions: audit, review, trusted mapping (2026-08-10)
+
+Implemented after the release gate above, all covered by the same fake-transport
+fixture suite (43 lib + 4 TUI tests passing):
+
+- `freefm audit` re-checks every `FreeFM · Auto` track with the same strict
+  playability logic as `sync`, reporting `still_free`, `became_restricted`,
+  `unavailable`, and `unknown` plus a stable JSON schema, `needs_attention`,
+  and exit code 3. It performs no remote write: tests assert zero create/add
+  calls and no delete/reorder path exists.
+- `freefm review` interactively shows high-similarity free candidates
+  (title, artists, duration delta, album, version markers, why it matched)
+  and only persists a local `trusted.json` mapping after an explicit user `y`.
+  The approved target is re-verified free at review time and again on every
+  later use; if it becomes restricted/unavailable, the mapping stops being used
+  (`trusted_invalid`) and the decision falls back to candidate-only.
+- `sync` now records the song IDs FreeFM itself appended in
+  `state.json` (`added_song_ids`, `#[serde(default)]`, backward compatible) to
+  scope any future safe repair. v0.1 still never deletes or repairs.
+- No ISRC/recording identity exists in live responses (see above), so trusted
+  mappings are human-confirmed only; there is no automatic fuzzy replacement,
+  no confidence-threshold auto-upgrade, and no audio fingerprinting.
+- Default scheduled-sync examples were relaxed from hourly to every 6 hours so
+  `FreeFM · Auto` grows slowly; the binary still supports any user-chosen
+  frequency and FreeFM itself still contains no scheduler.
+
+Live-account behavior of `audit` and `review` (including the FM-queue
+consumption question) is pending the human-in-the-loop experiment in
+`scripts/fm-queue-experiment.sh`; no result is claimed here until it runs.

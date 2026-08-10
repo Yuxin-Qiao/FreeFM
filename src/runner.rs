@@ -1,11 +1,13 @@
+use crate::audit::audit;
 use crate::auth::{authenticate, new_client};
 use crate::cli::{Cli, usage};
 use crate::error::{AppError, AppResult};
 use crate::plan::{account_uid, account_vip_type, build_plan};
 use crate::protocol::{FM_ENDPOINT, PLAYLIST_ADD_ENDPOINT, PLAYLIST_CREATE_ENDPOINT, Remote};
 use crate::render::is_login_error;
-use crate::storage::{Paths, SyncLock, load_session, load_state};
+use crate::storage::{Paths, SyncLock, load_session, load_state, load_trusted};
 use crate::sync::{require_login, require_ordinary_account, sync};
+use crate::trusted::{review, stdin_confirm};
 use serde_json::{Value, json};
 
 pub fn run(cli: Cli) -> AppResult<Value> {
@@ -43,16 +45,19 @@ pub fn run(cli: Cli) -> AppResult<Value> {
             let _lock = SyncLock::acquire(&paths)?;
             let session = load_session(&paths)?.ok_or(AppError::LoginRequired)?;
             let (state, state_corrupt_recovered) = load_state(&paths)?;
+            let (trusted, trusted_corrupt_recovered) = load_trusted(&paths)?;
             let mut remote = Remote::new(new_client(Some(&session))?);
             let account = require_login(&mut remote)?;
             require_ordinary_account(&account)?;
-            let report = build_plan(
+            let mut report = build_plan(
                 &mut remote,
                 &account.uid,
                 &state,
+                &trusted,
                 &cli.command,
                 state_corrupt_recovered,
             )?;
+            report.trusted_corrupt_recovered = trusted_corrupt_recovered;
             if cli.command == "sync" {
                 Ok(serde_json::to_value(sync(
                     &paths,
@@ -63,6 +68,32 @@ pub fn run(cli: Cli) -> AppResult<Value> {
             } else {
                 Ok(serde_json::to_value(report)?)
             }
+        }
+        "audit" => {
+            let _lock = SyncLock::acquire(&paths)?;
+            let session = load_session(&paths)?.ok_or(AppError::LoginRequired)?;
+            let (state, state_corrupt_recovered) = load_state(&paths)?;
+            let mut remote = Remote::new(new_client(Some(&session))?);
+            let account = require_login(&mut remote)?;
+            require_ordinary_account(&account)?;
+            audit(&mut remote, &account.uid, &state, state_corrupt_recovered)
+        }
+        "review" => {
+            let _lock = SyncLock::acquire(&paths)?;
+            let session = load_session(&paths)?.ok_or(AppError::LoginRequired)?;
+            let (state, state_corrupt_recovered) = load_state(&paths)?;
+            let mut remote = Remote::new(new_client(Some(&session))?);
+            let account = require_login(&mut remote)?;
+            require_ordinary_account(&account)?;
+            review(
+                &paths,
+                &mut remote,
+                &account.uid,
+                &state,
+                state_corrupt_recovered,
+                cli.json,
+                stdin_confirm,
+            )
         }
         "doctor" => {
             let session = load_session(&paths)?;
