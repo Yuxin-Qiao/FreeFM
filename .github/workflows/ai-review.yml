@@ -1,0 +1,73 @@
+name: AI Review
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  models-ai: write
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Run AI verification
+        id: ai
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -uo pipefail
+          base_ref="${{ github.event.pull_request.base.ref || 'main' }}"
+          set +e
+          python3 scripts/ai-review.py \
+            --base "origin/${base_ref}" \
+            --head HEAD \
+            --pr-number "${{ github.event.pull_request.number }}" \
+            --output ai-review.md
+          status=$?
+          set -e
+          echo "ai_status=${status}" >> "$GITHUB_OUTPUT"
+          # Exit 1 blocks the merge (fail closed). Exit 2 is an
+          # infrastructure failure: fail open so transient model
+          # endpoint problems do not stall every PR.
+          if [ "${status}" -eq 2 ]; then
+            exit 0
+          fi
+          exit "${status}"
+
+      - name: Post AI review comment
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.ai.outputs.ai_status != '2'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr review "${{ github.event.pull_request.number }}" --comment --body-file ai-review.md
+
+      - name: Comment infrastructure skip
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.ai.outputs.ai_status == '2'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" --body \
+            "AI verification was skipped because the model endpoint was unavailable (fail-open). This does not block the merge; see the job log for details."
+
+      - name: Upload AI review report
+        if: always() && steps.ai.outputs.ai_status != '2'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ai-review
+          path: ai-review.md
+          if-no-files-found: error
