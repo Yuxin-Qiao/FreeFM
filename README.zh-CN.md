@@ -4,7 +4,7 @@
 
 **私人 FM 进去，一张干净可免费播放的歌单出来。**
 
-原生 Rust CLI/TUI · 安全地将网易云私人 FM 免费可播歌曲同步至“只追加”歌单
+原生 Rust CLI/TUI · 安全同步网易云私人 FM 免费原曲，自动追加生成专属歌单
 
 [![CI](https://github.com/Yuxin-Qiao/FreeFM/actions/workflows/ci.yml/badge.svg)](https://github.com/Yuxin-Qiao/FreeFM/actions/workflows/ci.yml)
 [![Rust](https://img.shields.io/badge/Rust-native-DEA584?logo=rust&logoColor=white)](https://www.rust-lang.org/)
