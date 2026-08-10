@@ -42,7 +42,7 @@ library. All 35 tests (31 library + 4 TUI, 1 ignored child-process helper)
 pass, `cargo clippy --all-targets -- -D warnings` is clean, and the TUI gained
 a read-only settings page (JSON output and quiet-mode toggles, data-directory
 display; no scheduler, credential, or protocol logic). Cargo.toml now declares
-`rust-version = 1.85` and CI adds an MSRV check job. The stripped release
+`rust-version = 1.86` and CI adds an MSRV check job. The stripped release
 binary is 1,854,240 bytes with SHA-256
 `aadf7af20bda4301a9aceacf3f3e2c7c26b94809c8be4423afc327cee4db5979`, still
 smaller than the TUI build; live behavior and request counts are unchanged

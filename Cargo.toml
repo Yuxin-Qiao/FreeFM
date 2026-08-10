@@ -2,7 +2,7 @@
 name = "freefm"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.86"
 description = "Native Rust CLI and TUI for safely syncing free-playable NetEase Private FM tracks"
 license = "MIT"
 repository = "https://github.com/Yuxin-Qiao/FreeFM"

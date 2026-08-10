@@ -125,7 +125,7 @@ No-Go：撤销后仍允许 sync 写入，或重新认证要求用户粘贴 Cooki
 负责人：Rust owner。
 
 - [x] 在有网络的受控环境运行 `scripts/pin-actions.sh`，把所有 GitHub Actions 引用固定为完整 commit SHA，并保留版本注释。
-- [x] 保持 `rust-version = 1.85`，CI 用同一版本执行 `cargo check --all-targets --locked`。
+- [x] 保持 `rust-version = 1.86`，CI 用同一版本执行 `cargo check --all-targets --locked`。
 - [x] CI 的 Rust、MSRV、RustSec、Skill/WorkBuddy 包验证均只使用 fake/fixture。
 - [x] Release workflow 为二进制、校验和和 WorkBuddy ZIP生成 GitHub artifact attestation。
 - [x] 生成 CycloneDX 或 SPDX SBOM；SBOM 不包含本机路径或环境信息。

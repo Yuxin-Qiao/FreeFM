@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: dtolnay/rust-toolchain@bc540ba06a4ccee415bb241490e0b25ee8e7d315 # 1.85.0
+      - uses: dtolnay/rust-toolchain@52699249a776424c51ebc9ee197baf0f9dbf0d8a # 1.86.0
       - run: cargo check --all-targets --locked
 
   rustsec:
