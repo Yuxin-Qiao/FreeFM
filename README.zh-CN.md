@@ -111,10 +111,10 @@ MUSIC_U、session 和二维码 key。使用
 
 | 平台 | 安装方法 | 无模型定时路径 | 验证状态与证据 |
 |:---|:---|:---|:---|
-| <img src="assets/platforms/openclaw.svg" width="18" height="18" align="center"> **OpenClaw** | `openclaw skills install` `@yuxin-qiao/freefm` | Gateway `--command-argv` | 隔离 Gateway 实跑（退出码 0） |
-| <img src="assets/platforms/hermes.png" width="18" height="18" align="center"> **Hermes** | `hermes skills install` `Yuxin-Qiao/FreeFM/skills/freefm` | `--no-agent` 脚本路径 | Hermes 社区扫描 `SAFE` |
-| <img src="assets/platforms/workbuddy.png" width="18" height="18" align="center"> **WorkBuddy** | 上传 `freefm-workbuddy.zip` | 本地 Command 能力 | 客户端签名 & 认证包验证 |
-| <img src="assets/platforms/codex.svg" width="18" height="18" align="center"> **Codex** | 复制至 `~/.codex/skills/freefm` | 系统 cron / `codex sandbox` | Skill 规范与结构验证 |
+| <img src="assets/platforms/openclaw.svg" width="28" height="28" valign="middle">&nbsp;**OpenClaw** | `openclaw skills install` `@yuxin-qiao/freefm` | Gateway `--command-argv` | 隔离 Gateway 实跑（退出码 0） |
+| <img src="assets/platforms/hermes.png" width="28" height="28" valign="middle">&nbsp;**Hermes** | `hermes skills install` `Yuxin-Qiao/FreeFM/skills/freefm` | `--no-agent` 脚本路径 | Hermes 社区扫描 `SAFE` |
+| <img src="assets/platforms/workbuddy.png" width="28" height="28" valign="middle">&nbsp;**WorkBuddy** | 上传 `freefm-workbuddy.zip` | 本地 Command 能力 | 客户端签名 & 认证包验证 |
+| <img src="assets/platforms/codex.svg" width="28" height="28" valign="middle">&nbsp;**Codex** | 复制至 `~/.codex/skills/freefm` | 系统 cron / `codex sandbox` | Skill 规范与结构验证 |
 
 OpenClaw 定时示例：
 
