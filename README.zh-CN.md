@@ -92,29 +92,27 @@ MUSIC_U、session 和二维码 key。使用
 
 ## 命令
 
-| 命令 | 远端写入 | 用途 |
-|---|---:|---|
-| `freefm auth` | 否 | 官方客户端扫码登录 |
-| `freefm preview` | 否 | 展示加入、候选和跳过 |
-| `freefm sync` | 只追加 | 加入严格验证的免费原曲 |
-| `freefm status` | 否 | 检查 session 与账号 |
-| `freefm doctor` | 否 | 检查权限、状态和接口结构 |
-| `freefm tui` | 取决于选择 | 上述命令的交互入口 |
+| 命令 | 写入模式 | 用途描述 |
+| :--- | :--- | :--- |
+| `freefm auth` | 只读 | 网易云官方客户端扫码登录 |
+| `freefm preview` | 只读 | 展示计划追加 / 候选 / 跳过歌曲列表 |
+| `freefm sync` | 仅追加 | 将严格验证的免费原曲写入 `FreeFM · Auto` 歌单 |
+| `freefm status` | 只读 | 检查本机会话状态与账号信息 |
+| `freefm doctor` | 只读 | 诊断本机权限、数据目录与网易 API 结构 |
+| `freefm tui` | 交互式 | 引导式终端菜单（包含设置与命令触发） |
 
-`--json` 提供稳定机器输出，`--quiet` 成功时静默；`--data-dir PATH` 或
-`FREEFM_HOME` 可隔离状态目录。
+`--json` 提供稳定机器输出，`--quiet` 成功时静默；`--data-dir PATH` 或 `FREEFM_HOME` 可隔离状态目录。
 
 ## Agent 平台
 
-产品永远是 Rust 二进制；Skill 只负责安装和确定性调用。正常定时同步
-**0 LLM token**。
+产品永远是 Rust 二进制；Skill 只负责安装和确定性调用。正常定时同步 **0 LLM token**。
 
-| 平台 | 安装方法 | 无模型定时路径 (0 Token) | 验证状态与证据 |
-| :--- | :--- | :--- | :--- |
-| <img src="assets/platforms/openclaw.svg" width="20" height="20"> **OpenClaw** | `openclaw skills install @yuxin-qiao/freefm` | Gateway `--command-argv` | 隔离 Gateway 实跑（退出码 0） |
-| <img src="assets/platforms/hermes.png" width="20" height="20"> **Hermes** | `hermes skills install Yuxin-Qiao/FreeFM/skills/freefm` | `--no-agent` 脚本路径 | Hermes 社区扫描 `SAFE` |
-| <img src="assets/platforms/workbuddy.png" width="20" height="20"> **WorkBuddy** | 上传 `freefm-workbuddy.zip` | 本地 Command 能力 | 客户端签名 & 认证包验证 |
-| <img src="assets/platforms/codex.svg" width="20" height="20"> **Codex** | 复制至 `~/.codex/skills/freefm` | 系统 cron / `codex sandbox` | Skill 规范与结构验证 |
+| 平台 | 安装指令 / 方法 | 0 Token 无模型定时路径 |
+| :--- | :--- | :--- |
+| 🦞 **OpenClaw** | `openclaw skills install @yuxin-qiao/freefm` | Gateway `--command-argv` 确定性路径 |
+| 🪽 **Hermes** | `hermes skills install Yuxin-Qiao/FreeFM/skills/freefm` | `--no-agent` 脚本独立运行 |
+| 🤖 **WorkBuddy** | 上传 `freefm-workbuddy.zip` 技能包 | 本地 Command 能力确定性触发 |
+| ⚡ **Codex** | 复制至 `~/.codex/skills/freefm` | 系统 cron / `codex sandbox` |
 
 OpenClaw 定时示例：
 

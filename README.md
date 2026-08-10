@@ -93,29 +93,27 @@ CLI, never the TUI.
 
 ## Commands
 
-| Command | Remote write | Purpose |
-|---|---:|---|
-| `freefm auth` | No | Official-client QR login |
-| `freefm preview` | No | Show additions, candidates, skips |
-| `freefm sync` | Append only | Add strictly verified free originals |
-| `freefm status` | No | Check local session and account |
-| `freefm doctor` | No | Check permissions, state, and API shape |
-| `freefm tui` | Selected action | Guided terminal interface |
+| Command | Write Mode | Purpose |
+| :--- | :--- | :--- |
+| `freefm auth` | Read-only | Official-client QR code login |
+| `freefm preview` | Read-only | Preview planned additions, candidates, and skips |
+| `freefm sync` | Append-only | Append strictly verified free tracks to `FreeFM · Auto` |
+| `freefm status` | Read-only | Check local session and account status |
+| `freefm doctor` | Read-only | Check permissions, data directory, and API structure |
+| `freefm tui` | Interactive | Guided terminal menu for all commands |
 
-`--json` for stable machine output, `--quiet` for silent success; `--data-dir
-PATH` or `FREEFM_HOME` isolates the state root.
+`--json` for stable machine output, `--quiet` for silent success; `--data-dir PATH` or `FREEFM_HOME` isolates the state root.
 
 ## Agent platforms
 
-The Rust binary is the product; platform integrations only install and invoke
-its deterministic command. Routine scheduled sync uses **zero LLM tokens**.
+The Rust binary is the product; platform integrations only install and invoke its deterministic command. Routine scheduled sync uses **zero LLM tokens**.
 
-| Platform | Installation | Scheduled Path (0 LLM) | Validation Evidence |
-| :--- | :--- | :--- | :--- |
-| <img src="assets/platforms/openclaw.svg" width="20" height="20"> **OpenClaw** | `openclaw skills install @yuxin-qiao/freefm` | Gateway `--command-argv` | Isolated Gateway run (exit 0) |
-| <img src="assets/platforms/hermes.png" width="20" height="20"> **Hermes** | `hermes skills install Yuxin-Qiao/FreeFM/skills/freefm` | Script `--no-agent` | Hermes scan `SAFE / ALLOWED` |
-| <img src="assets/platforms/workbuddy.png" width="20" height="20"> **WorkBuddy** | Upload `freefm-workbuddy.zip` | Local command capability | Signed client & package verified |
-| <img src="assets/platforms/codex.svg" width="20" height="20"> **Codex** | Copy `skills/freefm` to `~/.codex/skills/freefm` | OS cron / `codex sandbox` | Skill structure verified |
+| Platform | Installation | Scheduled Path (0 LLM) |
+| :--- | :--- | :--- |
+| 🦞 **OpenClaw** | `openclaw skills install @yuxin-qiao/freefm` | Gateway `--command-argv` |
+| 🪽 **Hermes** | `hermes skills install Yuxin-Qiao/FreeFM/skills/freefm` | Script `--no-agent` execution |
+| 🤖 **WorkBuddy** | Upload `freefm-workbuddy.zip` package | Local command execution |
+| ⚡ **Codex** | Copy `skills/freefm` to `~/.codex/skills/freefm` | OS cron / `codex sandbox` |
 
 OpenClaw example:
 
