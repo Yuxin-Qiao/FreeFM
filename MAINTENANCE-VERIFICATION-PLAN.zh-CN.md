@@ -95,7 +95,7 @@ EV=~/.freefm-validation
 echo "started_at=$(cat $EV/started-at)"
 jq -s '{n: length,
         auth_ok: map(select(.authenticated==true))|length,
-        vip0: map(select((.vip_type//.vipType//-1)==0))|length,
+        vip0: map(select((.account_vip_type//-1)==0))|length,
         failures: map(.failure//.failure_type//"ok")|group_by(.)|map({type:.[0],n:length})}' \
   "$EV/session.jsonl"
 jq -s '{batches: length,
