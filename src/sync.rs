@@ -1,7 +1,6 @@
 use crate::error::{AppError, AppResult};
 use crate::plan::{PlanReport, account_uid, account_vip_type, select_playlist};
 use crate::protocol::RemoteApi;
-use crate::render::is_login_error;
 use crate::storage::{Paths, load_state, now_seconds, write_private_json};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -13,7 +12,7 @@ pub(crate) struct AccountContext {
 pub(crate) fn require_login<R: RemoteApi>(remote: &mut R) -> AppResult<AccountContext> {
     let body = match remote.status() {
         Ok(body) => body,
-        Err(error) if is_login_error(&error) => return Err(AppError::LoginRequired),
+        Err(AppError::LoginRequired) => return Err(AppError::LoginRequired),
         Err(error) => return Err(error),
     };
     let uid = account_uid(&body)?;

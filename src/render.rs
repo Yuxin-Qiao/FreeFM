@@ -17,11 +17,6 @@ pub fn json_error(error: &AppError) -> Value {
     json!({"ok": false, "error": {"kind": kind, "message": message}})
 }
 
-pub(crate) fn is_login_error(error: &AppError) -> bool {
-    matches!(error, AppError::LoginRequired)
-        || matches!(error, AppError::Remote(message) if message.contains("登录类响应代码"))
-}
-
 pub(crate) fn rendered_output(
     cli: &Cli,
     value: &Value,
