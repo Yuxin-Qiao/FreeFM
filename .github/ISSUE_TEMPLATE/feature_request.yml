@@ -1,0 +1,28 @@
+name: Feature request
+description: Propose a focused improvement to FreeFM
+title: "feat: "
+body:
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: Who needs this and what problem does it solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Product boundaries
+      options:
+        - label: This does not require unlocking restricted audio, downloading media, or changing append-only sync.
+          required: true
