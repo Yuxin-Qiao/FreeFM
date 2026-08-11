@@ -1,6 +1,6 @@
 mod tui;
 
-use freefm::{AppError, Cli, Paths, VERSION, emit, json_error, run};
+use freefm::{AppError, Cli, Paths, VERSION, audit_human, emit, json_error, preview_human, run};
 use std::env;
 use std::io::{self, IsTerminal};
 use std::process::ExitCode;
@@ -55,22 +55,12 @@ fn main() -> ExitCode {
                         "未登录或会话已失效。".to_string()
                     }
                 }
-                "preview" => format!(
-                    "预览完成：{} 首 FM 推荐，计划加入 {} 首。",
-                    value["private_fm_count"],
-                    value["would_add_ids"].as_array().map_or(0, Vec::len)
-                ),
+                "preview" => preview_human(&value),
                 "sync" => format!(
                     "同步完成：计划加入 {} 首，已验证歌单写入。",
                     value["would_add_ids"].as_array().map_or(0, Vec::len)
                 ),
-                "audit" => format!(
-                    "审计完成：{} 首仍然免费；{} 首需要关注。audit 只读，未修改歌单。",
-                    value["summary"]["still_free"],
-                    value["summary"]["became_restricted"].as_i64().unwrap_or(0)
-                        + value["summary"]["unavailable"].as_i64().unwrap_or(0)
-                        + value["summary"]["unknown"].as_i64().unwrap_or(0)
-                ),
+                "audit" => audit_human(&value),
                 "review" => format!(
                     "review 完成：确认 {} 个映射，跳过 {} 个。",
                     value["approved_count"], value["skipped_count"]

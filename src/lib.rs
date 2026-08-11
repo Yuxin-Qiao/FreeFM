@@ -21,7 +21,7 @@ mod trusted;
 
 pub use cli::Cli;
 pub use error::AppError;
-pub use render::{emit, json_error};
+pub use render::{audit_human, emit, json_error, preview_human};
 pub use runner::run;
 pub use storage::Paths;
 
@@ -40,7 +40,7 @@ mod tests {
     use crate::protocol::{
         PLAYLIST_NAME, RemoteApi, playlist_detail_extra_requests, playlist_track_ids,
     };
-    use crate::render::{is_login_error, rendered_output};
+    use crate::render::{audit_human, is_login_error, preview_human, rendered_output};
     use crate::storage::{
         SessionFile, StateFile, StoredCookie, SyncLock, TrustedStore, load_session, load_state,
         load_trusted, now_seconds, restrict_dir, save_trusted, write_private_json,
@@ -672,6 +672,52 @@ mod tests {
         let error = json!({"ok": false, "error": {"kind": "timeout"}});
         let output = rendered_output(&cli, &error, "timeout", true).unwrap();
         assert_eq!(serde_json::from_str::<Value>(&output).unwrap(), error);
+    }
+
+    #[test]
+    fn preview_human_renders_each_decision_and_summary_without_ids() {
+        let value = json!({
+            "private_fm_count": 5,
+            "decisions": [
+                {"action":"add_original","original_title":"加入歌","original_artist":"甲","reason":"原曲免费"},
+                {"action":"trusted_mapping","original_title":"已确认原曲","original_artist":"乙","selected_title":"免费版本","selected_artist":"乙","reason":"用户确认的版本"},
+                {"action":"candidate_only","original_title":"受限歌","original_artist":"丙","selected_title":"候选歌","selected_artist":"丙","reason":"仅供人工 review"},
+                {"action":"skip","original_title":"未知歌","original_artist":"丁","reason":"播放权限未知"},
+                {"action":"already_present","original_title":"已有歌","original_artist":"戊","reason":"已在歌单"}
+            ]
+        });
+        let output = preview_human(&value);
+        assert!(output.contains("加入歌 — 甲"));
+        assert!(output.contains("使用已确认版本：免费版本 — 乙"));
+        assert!(output.contains("免费候选：候选歌 — 丙"));
+        assert!(output.contains("跳过\n  未知歌 — 丁"));
+        assert!(output.contains("已存在\n  已有歌 — 戊"));
+        assert!(output.contains("汇总：加入 2 · 候选 1 · 跳过 1 · 已存在 1"));
+        assert!(!output.contains("123456"));
+    }
+
+    #[test]
+    fn audit_human_shows_only_attention_items_and_healthy_is_compact() {
+        let healthy = json!({"summary":{"still_free":4,"became_restricted":0,"unavailable":0,"unknown":0},"items":[]});
+        let healthy_output = audit_human(&healthy);
+        assert!(healthy_output.contains("4 首仍可免费完整播放"));
+        assert!(healthy_output.contains("无需处理"));
+
+        let attention = json!({
+            "summary":{"still_free":2,"became_restricted":1,"unavailable":1,"unknown":1},
+            "items":[
+                {"status":"still_free","title":"健康歌","artist":"甲","reason":""},
+                {"status":"became_restricted","title":"受限歌","artist":"乙","reason":"需要 VIP"},
+                {"status":"unavailable","title":"不可用歌","artist":"丙","reason":"当前不可用"},
+                {"status":"unknown","title":"未知歌","artist":"丁","reason":"证据缺失"}
+            ]
+        });
+        let output = audit_human(&attention);
+        assert!(output.contains("2 首仍免费，3 首需要关注"));
+        assert!(output.contains("受限歌 — 乙"));
+        assert!(output.contains("不可用歌 — 丙"));
+        assert!(output.contains("未知歌 — 丁"));
+        assert!(!output.contains("健康歌"));
     }
 
     #[test]
