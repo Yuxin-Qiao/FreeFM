@@ -73,7 +73,10 @@ fn main() -> ExitCode {
             }
         }
         Err(error) => {
-            let value = json_error(&error);
+            let mut value = json_error(&error);
+            if let Some(object) = value.as_object_mut() {
+                object.insert("command".to_string(), serde_json::json!(cli.command));
+            }
             emit(&cli, &value, error, true);
             ExitCode::from(1)
         }

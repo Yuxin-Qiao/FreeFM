@@ -30,9 +30,20 @@ pub(crate) fn operational_metadata(
     })
 }
 
+pub(crate) fn success_envelope(command: &str, mut value: Value) -> Value {
+    if let Some(object) = value.as_object_mut() {
+        object.insert("schema_version".to_string(), json!(1));
+        object
+            .entry("ok".to_string())
+            .or_insert_with(|| json!(true));
+        object.insert("command".to_string(), json!(command));
+    }
+    value
+}
+
 pub fn run(cli: Cli) -> AppResult<Value> {
     let paths = Paths::from_cli(&cli);
-    match cli.command.as_str() {
+    let result = match cli.command.as_str() {
         "auth" => authenticate(&paths),
         "status" => {
             let (state, state_corrupt_recovered) = load_state(&paths)?;
@@ -157,5 +168,6 @@ pub fn run(cli: Cli) -> AppResult<Value> {
             Ok(value)
         }
         other => Err(AppError::Usage(format!("未知命令：{other}\n\n{}", usage()))),
-    }
+    };
+    result.map(|value| success_envelope(&cli.command, value))
 }
