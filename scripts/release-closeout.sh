@@ -157,7 +157,7 @@ if ! unzip -l "$art_dir/freefm-workbuddy.zip" 2>/dev/null | grep -q "SKILL.md"; 
 fi
 
 # C5: release notes must cover the required disclaimers; append them if missing.
-notes_file=$(mktemp "${TMPDIR:-/tmp}/freefm-notes.XXXXXX.md")
+notes_file=$(mktemp "${TMPDIR:-/tmp}/freefm-notes.XXXXXX")
 gh release view "$version" --repo Yuxin-Qiao/FreeFM --json body --jq .body >"$notes_file" 2>/dev/null || true
 need_edit=0
 for kw in experimental undocumented append-only candidate resident; do
