@@ -19,6 +19,7 @@ pub(crate) enum Action {
     CandidateOnly,
     Skip,
     AlreadyPresent,
+    DeferredByBudget,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -66,6 +67,9 @@ pub(crate) struct PlanReport {
     pub(crate) existing_track_count: usize,
     pub(crate) would_create_playlist: bool,
     pub(crate) would_add_ids: Vec<String>,
+    pub(crate) max_additions: Option<usize>,
+    pub(crate) eligible_add_count: usize,
+    pub(crate) deferred_count: usize,
     pub(crate) decisions: Vec<Decision>,
     pub(crate) client_calls: u64,
     pub(crate) http_requests: u64,
@@ -148,6 +152,26 @@ pub(crate) fn build_plan<R: RemoteApi>(
     command: &str,
     state_corrupt_recovered: bool,
 ) -> AppResult<PlanReport> {
+    build_plan_with_limit(
+        remote,
+        uid,
+        state,
+        trusted,
+        command,
+        state_corrupt_recovered,
+        None,
+    )
+}
+
+pub(crate) fn build_plan_with_limit<R: RemoteApi>(
+    remote: &mut R,
+    uid: &str,
+    state: &StateFile,
+    trusted: &TrustedStore,
+    command: &str,
+    state_corrupt_recovered: bool,
+    max_additions: Option<usize>,
+) -> AppResult<PlanReport> {
     let fm_songs = remote.private_fm()?;
     let fm_ids = fm_songs
         .iter()
@@ -178,7 +202,6 @@ pub(crate) fn build_plan<R: RemoteApi>(
         HashSet::new()
     };
     let mut decisions = Vec::new();
-    let mut candidates_to_add = Vec::new();
     let mut planned_ids = HashSet::new();
     for original in fm_songs {
         let original = merge_song_metadata(&original, detail_map.get(&original.id));
@@ -313,11 +336,6 @@ pub(crate) fn build_plan<R: RemoteApi>(
         } else {
             action
         };
-        if matches!(final_action, Action::AddOriginal | Action::TrustedMapping) {
-            if let Some(id) = &selected_id {
-                candidates_to_add.push(id.clone());
-            }
-        }
         decisions.push(Decision {
             original_id: original.id.clone(),
             original_title: original.name.clone(),
@@ -345,6 +363,35 @@ pub(crate) fn build_plan<R: RemoteApi>(
             },
         });
     }
+    let eligible_add_count = decisions
+        .iter()
+        .filter(|decision| {
+            matches!(
+                decision.action,
+                Action::AddOriginal | Action::TrustedMapping
+            )
+        })
+        .count();
+    let mut candidates_to_add = Vec::new();
+    let mut deferred_count = 0;
+    for decision in &mut decisions {
+        if !matches!(
+            decision.action,
+            Action::AddOriginal | Action::TrustedMapping
+        ) {
+            continue;
+        }
+        let within_budget = max_additions.is_none_or(|limit| candidates_to_add.len() < limit);
+        if within_budget {
+            if let Some(id) = &decision.selected_id {
+                candidates_to_add.push(id.clone());
+            }
+        } else {
+            decision.action = Action::DeferredByBudget;
+            decision.reason = "本次 --max-additions 预算已用完；歌曲仍符合加入条件".to_string();
+            deferred_count += 1;
+        }
+    }
     Ok(PlanReport {
         ok: true,
         command: command.to_string(),
@@ -356,6 +403,9 @@ pub(crate) fn build_plan<R: RemoteApi>(
         existing_track_count: existing.len(),
         would_create_playlist: selected_playlist.is_none(),
         would_add_ids: candidates_to_add,
+        max_additions,
+        eligible_add_count,
+        deferred_count,
         decisions,
         client_calls: remote.client_calls(),
         http_requests: remote.http_requests(),

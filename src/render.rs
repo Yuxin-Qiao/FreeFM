@@ -73,6 +73,7 @@ pub fn preview_human(value: &Value) -> String {
     let mut candidates = 0usize;
     let mut skipped = 0usize;
     let mut already_present = 0usize;
+    let mut deferred = 0usize;
 
     for decision in decisions {
         let action = decision
@@ -95,6 +96,10 @@ pub fn preview_human(value: &Value) -> String {
             "already_present" => {
                 already_present += 1;
                 "已存在"
+            }
+            "deferred_by_budget" => {
+                deferred += 1;
+                "延后"
             }
             _ => {
                 skipped += 1;
@@ -149,6 +154,15 @@ pub fn preview_human(value: &Value) -> String {
     output.push_str(&format!(
         "\n\n汇总：加入 {added} · 候选 {candidates} · 跳过 {skipped} · 已存在 {already_present}"
     ));
+    if let Some(limit) = value.get("max_additions").and_then(Value::as_u64) {
+        let eligible = value
+            .get("eligible_add_count")
+            .and_then(Value::as_u64)
+            .unwrap_or(added as u64);
+        output.push_str(&format!(
+            "\n预算：最多加入 {limit} 首\n符合加入条件：{eligible}\n本次计划加入：{added}\n因预算延后：{deferred}"
+        ));
+    }
     output
 }
 

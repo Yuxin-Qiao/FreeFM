@@ -64,9 +64,11 @@ curl -fsSL https://raw.githubusercontent.com/Yuxin-Qiao/FreeFM/main/scripts/inst
 ```sh
 freefm auth          # Scan QR code with official NetEase client
 freefm preview       # Read-only preview: show additions, candidates, skips
+freefm preview --max-additions 10 # Optional per-run preview/write budget
 freefm audit         # Read-only: re-check saved tracks still play free (exit 3 = attention)
 freefm review        # Interactive: approve a free-version candidate once (local only)
 freefm sync          # Append-only remote write to "FreeFM · Auto" playlist
+freefm sync --max-additions 10 # Optional hard cap; default remains unlimited
 freefm sync --quiet  # Scheduler path; silent on success
 
 # Optional guided terminal UI:

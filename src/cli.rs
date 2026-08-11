@@ -7,6 +7,7 @@ pub struct Cli {
     pub json: bool,
     pub quiet: bool,
     pub data_dir: Option<PathBuf>,
+    pub max_additions: Option<usize>,
 }
 
 impl Cli {
@@ -29,6 +30,7 @@ impl Cli {
         let mut json_output = false;
         let mut quiet = false;
         let mut data_dir = None;
+        let mut max_additions = None;
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--json" => json_output = true,
@@ -37,6 +39,20 @@ impl Cli {
                     data_dir = Some(PathBuf::from(args.next().ok_or_else(|| {
                         AppError::Usage("--data-dir 需要一个路径".to_string())
                     })?));
+                }
+                "--max-additions" => {
+                    let raw = args.next().ok_or_else(|| {
+                        AppError::Usage("--max-additions 需要一个正整数".to_string())
+                    })?;
+                    let value = raw.parse::<usize>().map_err(|_| {
+                        AppError::Usage("--max-additions 必须是 1 到 10000 的整数".to_string())
+                    })?;
+                    if !(1..=10_000).contains(&value) {
+                        return Err(AppError::Usage(
+                            "--max-additions 必须是 1 到 10000 的整数".to_string(),
+                        ));
+                    }
+                    max_additions = Some(value);
                 }
                 "--help" | "-h" => return Err(AppError::Help(usage())),
                 other => return Err(AppError::Usage(format!("未知参数：{other}\n\n{}", usage()))),
@@ -47,17 +63,23 @@ impl Cli {
                 "{command} 需要交互式终端，不能使用 --quiet"
             )));
         }
+        if max_additions.is_some() && !matches!(command.as_str(), "preview" | "sync") {
+            return Err(AppError::Usage(
+                "--max-additions 仅支持 preview 和 sync".to_string(),
+            ));
+        }
         Ok(Self {
             command,
             json: json_output,
             quiet,
             data_dir,
+            max_additions,
         })
     }
 }
 
 pub(crate) fn usage() -> String {
-    "FreeFM\n\n用法：freefm <auth|preview|sync|audit|review|status|doctor|tui> [--json] [--quiet] [--data-dir PATH]\n\n\
+    "FreeFM\n\n用法：freefm <auth|preview|sync|audit|review|status|doctor|tui> [--json] [--quiet] [--data-dir PATH] [--max-additions N]\n\n\
 auth     生成二维码并等待网易云官方客户端确认\n\
 preview  读取私人 FM 并预览加入、候选、跳过；绝不写远端歌单\n\
 sync     读取私人 FM，并 append-only 写入 FreeFM · Auto\n\
