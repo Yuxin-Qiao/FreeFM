@@ -12,7 +12,7 @@ data_dir=${FREEFM_ACCEPTANCE_DIR:-"$HOME/.freefm-acceptance"}
 evidence="$data_dir/acceptance.jsonl"
 
 if [ ! -x "$binary" ]; then
-  echo "release binary 不存在：$binary（先 cargo build --release --locked）" >&2
+  echo "release binary 不存在：${binary}（先 cargo build --release --locked）" >&2
   exit 1
 fi
 

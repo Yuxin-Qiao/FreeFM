@@ -30,7 +30,7 @@ gate_epoch=$((started_epoch + 7 * 24 * 3600))
 now_epoch=$(date -u +%s)
 if [ "$now_epoch" -lt "$gate_epoch" ]; then
   gate_display=$(date -u -r "$gate_epoch" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "@$gate_epoch" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "$gate_epoch")
-  echo "时间门槛未到：首样本 $started_at，+7d 为 $gate_display，当前 $(date -u +%Y-%m-%dT%H:%M:%SZ)" >&2
+  echo "时间门槛未到：首样本 ${started_at}，+7d 为 ${gate_display}，当前 $(date -u +%Y-%m-%dT%H:%M:%SZ)" >&2
   exit 1
 fi
 echo "[1/8] +7d 门槛已通过（$started_at + 7d）。"
@@ -112,7 +112,7 @@ if [ -z "$run_id" ]; then
 fi
 conclusion=$(gh run view "$run_id" --json conclusion --jq .conclusion)
 if [ "$conclusion" != "success" ]; then
-  echo "Release workflow 结论为 $conclusion，终止" >&2
+  echo "Release workflow 结论为 ${conclusion}，终止" >&2
   exit 1
 fi
 echo "[5/8] Release workflow 全绿。"
@@ -134,7 +134,7 @@ for asset in \
   "freefm-workbuddy.zip" \
   "freefm-sbom.cdx.json"; do
   if [ ! -s "$art_dir/$asset" ]; then
-    echo "Release 缺少产物 $asset，请检查下载目录 $art_dir" >&2
+    echo "Release 缺少产物 ${asset}，请检查下载目录 ${art_dir}" >&2
     exit 1
   fi
 done
