@@ -119,6 +119,12 @@ successfully. Its persisted run record states `Mode: no_agent (script)` and
 `Status: silent (empty output)`, so that execution used no Agent/LLM and
 produced no routine output.
 
+As of 2026-08-11 the installed Hermes (v0.20.0) has no scheduled jobs
+(`hermes cron list` is empty), which keeps periodic sync fully paused. The
+closeout script installs `automation/hermes/freefm-sync.sh` into
+`~/.hermes/scripts/` and creates `freefm-sync` (every 6 h, `--no-agent`) as its
+final step, after all release gates pass.
+
 OpenClaw 2026.8.1 installed the skill from both a local package and
 `git:Yuxin-Qiao/FreeFM@main` in isolated state/workspace directories. On 2026-08-10 an
 isolated token-authenticated Gateway executed a command job whose exact
@@ -183,3 +189,35 @@ recommendations" with no observed client-queue consumption; keep the
 conservative 6-hour default recommendation and do not increase frequency based
 on this result. If a later sample shows queue advancement, reduce frequency or
 add an explicit user opt-in.
+
+## Daily aggregate 2026-08-11 (validation still running, read-only)
+
+Source: `~/.freefm-validation/`; only timestamps, counts, booleans, and
+failure types are recorded. No cookies, account identifiers, song IDs/titles,
+or URLs are stored in this document.
+
+Session (`session.jsonl`, n=36):
+
+- first sample 2026-08-09T15:21:34Z, last sample 2026-08-11T02:25:43Z;
+- 36/36 `ok`, 36/36 `authenticated`, `login_required` count = 0;
+- unique `account_vip_type` values = `[0]` (ordinary account confirmed on
+  every sample);
+- failure types: none.
+
+Passive FM (`passive.jsonl`, n=38):
+
+- first sample 2026-08-09T14:28:33Z (two pre-LaunchAgent manual samples),
+  hourly sampling from 15:21:37Z, last sample 2026-08-11T02:25:46Z;
+- 38 unique salted batch hashes, 106 unique salted track hashes, zero
+  failures; batches continue to contain new tracks;
+- HTTP requests per fetch: 11-17 (mode 15), consistent with one preview.
+
+LaunchAgent `com.freefm.validation`:
+
+- loaded, hourly, last exit 0; script contains only `status` and `preview`
+  invocations; keyword scan for sync/play/skip/trash/scrobble found none;
+- evidence size bounded: session.jsonl 6,192 B + passive.jsonl 19,604 B
+  (total ~25.8 KB after ~35 h of sampling).
+
+Status: within the +7d observation window (gate 2026-08-16 23:21
+Asia/Shanghai). No sync or cron has been enabled.
