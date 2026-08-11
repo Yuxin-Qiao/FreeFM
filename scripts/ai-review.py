@@ -184,6 +184,8 @@ def call_model(endpoint, api_key, model, messages, timeout=REQUEST_TIMEOUT):
 
 
 def extract_json(text):
+    if not isinstance(text, str):
+        raise ParseError("model output content missing")
     text = text.strip()
     if text.startswith("```"):
         text = re.sub(r"^```[a-zA-Z0-9_-]*\s*", "", text)
