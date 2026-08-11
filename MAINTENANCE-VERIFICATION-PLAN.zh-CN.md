@@ -1,10 +1,13 @@
 # FreeFM 维修验证计划（v0.1 发布收口）
 
-更新：2026-08-11（Asia/Shanghai）
+更新：2026-08-11 修订 2（Asia/Shanghai）
 适用仓库：`Yuxin-Qiao/FreeFM`（本地 `free-music-agent`）
 目标：在 `v0.1.0` 发布前，把全部剩余缺口逐项验证、修复并留下脱敏证据；
 只有本计划所有 Go 门槛通过，才允许创建 tag、发布 Release、更新 Homebrew、
 恢复无人值守同步。
+
+修订 2 新增：对 `scripts/release-closeout.sh` 的逐行复核结论与修复任务
+（G14，见 2.5 节）；G1 标记完成；更新 08-11 每日聚合证据。
 
 本计划与 `TEAM-COMPLETION-PLAN.zh-CN.md` 配套：后者是总纲，本文是
 “从 2026-08-11 到今天”的逐日执行手册。所有步骤 fail-closed：
@@ -38,15 +41,22 @@
   attestation（`attest-build-provenance`）与 CycloneDX SBOM job。
 - Hermes：`cron list` 为空（正确保持暂停）；`~/.hermes/scripts/freefm-sync.sh`
   已安装且与仓库副本一致。
-- GitHub：`main` = `111ea17`（PR #12 合并后 CI 全绿）；`homebrew-tap` 仓库
-  已建（README commit `07ca41a`），Formula 模板 `scripts/formula/freefm.rb`
-  就绪。
+- GitHub：`main` = `8963d0f`（PR #14 合并后 CI 全绿），本地工作区干净；
+  `homebrew-tap` 仓库已建（HEAD `07ca41a`），Formula 模板
+  `scripts/formula/freefm.rb` 就绪。
+- 08-11 每日聚合：36/36 session 检查全部 authenticated 且 `vipType=0`；
+  38 批被动 FM、106 个唯一盐化 track hash、零失败；每批 HTTP 11-17 次；
+  证据文件约 25.8 KB；LaunchAgent 只含 `status`/`preview`；Hermes cron 为空。
+- `freefm --version` 实测退出码 0（输出 `FreeFM 0.1.0`），Formula `test do`
+  与 `scripts/release-smoke-test.sh` 的 `--version` 用法均有效，无需修改；
+  smoke test 完全离线可跑（mock curl + 本地 tarball）。
 
 ### 未达成（本计划要消灭的缺口）
 
 | 编号 | 缺口 | 阻塞方 | 当前状态 |
 |---|---|---|---|
-| G1 | 工作区 4 个文件改动未提交（`.gitignore`、`TEAM-COMPLETION-PLAN.zh-CN.md`、`V01-VALIDATION.md`、`scripts/release-closeout.sh`） | 无 | 本地 `main` 落后 `origin/main` 2 个 commit |
+| G1 | ~~工作区 4 个文件改动未提交~~（PR #14 已合并） | 无 | ✅ 完成 |
+| G14 | closeout 脚本 4 处发布缺陷：轻量 tag、缺 SBOM/WorkBuddy 产物校验、`brew audit` 缺 `--online`、`gh run list --branch` 对 tag 触发不可靠 | 无 | 已定位（见 2.5），未修复 |
 | G2 | +7d 被动 FM / session 观察未完成 | 时间 | 门槛 2026-08-16 23:21:34 CST，还差约 5 天 |
 | G3 | session 服务端撤销 → fail-closed → 重新扫码 → 重启恢复未实跑 | 账号持有人扫码 | 未开始 |
 | G4 | 手工歌曲安全验证（L2）未实跑 | 账号持有人 1 分钟 | 未开始 |
@@ -85,7 +95,7 @@ EV=~/.freefm-validation
 echo "started_at=$(cat $EV/started-at)"
 jq -s '{n: length,
         auth_ok: map(select(.authenticated==true))|length,
-        vip0: map(select((.vip_type//.vipType//-1)==0))|length,
+        vip0: map(select((.account_vip_type//-1)==0))|length,
         failures: map(.failure//.failure_type//"ok")|group_by(.)|map({type:.[0],n:length})}' \
   "$EV/session.jsonl"
 jq -s '{batches: length,
@@ -109,6 +119,9 @@ track 去重数仍在增长或如实记录停滞、LaunchAgent 只读。
 每日 No-Go：任何未解释失败、证据文件出现原始标识、LaunchAgent 曾执行写操作。
 
 ## 2. G1 工作区收口（立即执行，1-2 小时）
+
+状态：✅ 已完成（PR #14 已合并，`main` = `8963d0f`）。本节保留作复核依据，
+禁止重复提交。
 
 负责人：Rust owner；复核：Release owner。
 
@@ -136,6 +149,93 @@ git add .gitignore TEAM-COMPLETION-PLAN.zh-CN.md V01-VALIDATION.md scripts/relea
 
 通过标准：远端 `main` 包含该 commit、CI 全绿、本地无未提交 diff。
 No-Go：CI 任一 job 失败且与本批改动相关 → 修复重跑，禁止“修 tag 绕过”。
+
+## 2.5 G14 closeout 脚本发布缺陷修复（立即执行，先于一切发布动作）
+
+负责人：Release owner；复核：Rust owner。
+背景：2026-08-11 对 `scripts/release-closeout.sh` 逐行复核并本机实测
+`./target/release/freefm --version`（exit 0）后，确认 4 处缺陷、1 处无需
+修改。所有修改保持“每步 fail-closed、先验证后发布”的顺序不变，不改变
+8 步流程结构。
+
+### C1 轻量 tag → annotated tag
+
+定位：`git tag "$version"`（步骤 5）。改后：
+
+```sh
+git tag -a "$version" -m "FreeFM v0.1.0"
+```
+
+验收：`git cat-file -t v0.1.0` 输出 `tag`；推送后 Release workflow 的
+`--verify-tag` 不受影响。
+
+### C2 步骤 6 补产物完整性校验（当前只验 3 个 tarball）
+
+`gh release download` 后必须确认以下产物全部存在（缺任一即 exit 1）：
+
+- `freefm-v0.1.0-darwin-arm64.tar.gz` 及 `.sha256`
+- `freefm-v0.1.0-linux-x86_64.tar.gz` 及 `.sha256`
+- `freefm-v0.1.0-linux-arm64.tar.gz` 及 `.sha256`
+- `freefm-workbuddy.zip`（`unzip -l` 非空，含 `SKILL.md`）
+- `freefm-sbom.cdx.json`（`jq -e '.bomFormat=="CycloneDX"'` 可解析）
+
+同时把计算出的 SHA-256 与各 `.sha256` sidecar 内容比对，不一致即 No-Go。
+下载可用 `--pattern 'freefm-v0.1.0-*'`、`--pattern 'freefm-workbuddy.zip'`、
+`--pattern 'freefm-sbom.cdx.json'` 分次拉取，避免静默跳过。
+
+### C3 `brew audit` 补 `--online`（步骤 7）
+
+```sh
+# 改前
+brew audit --strict freefm
+# 改后（与第 7 节计划一致）
+brew audit --strict --online Yuxin-Qiao/tap/freefm
+```
+
+说明：本机 audit 不等于干净环境；如 CI 有 macOS runner，可在
+`.github/workflows/ci.yml` 增加可选 tap-audit job（P2，非发布阻塞），
+结果如实记录。
+
+### C4 `gh run list --branch` 不可靠 → API 兜底（步骤 5 轮询处）
+
+轮询循环内先试 `gh run list --workflow release.yml --branch "$version"`；
+连续 3 次无 completed run 时改用：
+
+```sh
+run_id=$(gh api "repos/Yuxin-Qiao/FreeFM/actions/runs?event=push&per_page=20" \
+  --jq '.workflow_runs[] | select(.head_branch=="'"$version"'" and .name=="Release") | select(.status=="completed") | .id' \
+  | head -1)
+```
+
+仍为空则保留现有人工检查提示并 exit 1。禁止 `--watch` 或单次 sleep 超过
+15 分钟。
+
+### C5 Release notes 内容校验（步骤 6 之后新增）
+
+```sh
+gh release view "$version" --repo Yuxin-Qiao/FreeFM --json body --jq .body
+```
+
+正文必须覆盖：实验性/未公开接口、普通账号限定（`vipType=0`）、
+append-only、candidate-only、零常驻、剩余限制。缺任一项先
+`gh release edit "$version" --notes-file <文件>` 补齐，再继续 Homebrew。
+
+### 修复后门禁（必须全过再提交）
+
+```sh
+sh -n scripts/release-closeout.sh
+git diff --check
+bash scripts/release-smoke-test.sh        # 离线可跑，须全绿
+./target/release/freefm --version         # 期望 exit 0
+```
+
+显式 `git add scripts/release-closeout.sh MAINTENANCE-VERIFICATION-PLAN.zh-CN.md`
+（禁止 `git add -A`），提交消息建议：
+`fix: closeout annotated tag, asset completeness, brew audit online, run lookup fallback`，
+推送分支开 PR，等 CI 全绿后合并。
+
+通过标准：脚本逐行复核无未处理缺陷；PR CI 全绿；`sh -n`、diff-check、
+smoke test 均 exit 0。No-Go：任何一项失败 → 修复重跑，禁止绕过。
 
 ## 3. G2 +7d 门槛收口（2026-08-16 23:21:34 CST 之后）
 
@@ -204,17 +304,18 @@ scripts/package-workbuddy.sh target/freefm-workbuddy.zip
 记录每条退出码、测试数、binary 字节数与 SHA-256、`freefm --version`
 冷启动和峰值 RSS、`~/.freefm` 与证据目录字节数。
 2. 提交（显式文件列表），推送，确认远端 SHA 与本地 HEAD 一致，等 CI 全绿。
-3. 运行 `bash scripts/release-closeout.sh`（脚本自身校验 +7d 门槛；分 8 步
-   每步 fail-closed）：
+3. 运行 `bash scripts/release-closeout.sh`（G14 修复后的版本；脚本自身校验
+   +7d 门槛；分 8 步每步 fail-closed）：
    - 步骤 1：时间门槛（已由 G2 保证）；
    - 步骤 2：移除 LaunchAgent（已由 G2 做，脚本会复核）；
-   - 步骤 3-5：本地门禁 + main 干净检查 + annotated `v0.1.0` tag；
-   - 步骤 6：推送 tag，等待 Release workflow（macOS arm64、Linux x86_64、
-     Linux arm64、WorkBuddy ZIP、SHA-256、SBOM、attestation）；
-   - 步骤 7：下载校验所有平台产物（checksum 一致、解压清单正确、
-     `freefm --version` 可运行、Release 页面无内部数据）。
-4. Release notes 必须写明：实验性未公开接口、普通账号限定、append-only、
-   candidate-only、零常驻、已验证平台与剩余限制；不承诺自动修复。
+   - 步骤 3-4：本地门禁 + main 干净检查；
+   - 步骤 5：annotated `v0.1.0` tag，推送并等待 Release workflow（macOS
+     arm64、Linux x86_64、Linux arm64、WorkBuddy ZIP、SHA-256、SBOM、
+     attestation）；
+   - 步骤 6：下载校验全部产物（含 G14-C2 的 SBOM/WorkBuddy/sidecar 比对），
+     并按 G14-C5 校验 Release notes；
+   - 步骤 7：brew tap/install/test/audit（audit 含 `--online`）；
+   - 步骤 8：恢复 Hermes `freefm-sync`（每 6h、`--no-agent`）。
 
 ## 7. G6 Homebrew（P0-9）
 
@@ -286,6 +387,8 @@ brew audit --strict --online Yuxin-Qiao/tap/freefm
 全部通过才允许宣布 v0.1 完成并开启周期同步：
 
 - [ ] +24h 与 +7d 脱敏证据完成，无未解释失败
+- [ ] G14 closeout 脚本修复已合并且 CI 全绿（annotated tag / 产物完整性 /
+      brew audit `--online` / run 查询兜底 / Release notes 校验）
 - [ ] G3 撤销/重扫/重启恢复通过
 - [ ] G4 手工歌曲安全通过
 - [ ] 本地门禁、RustSec、gitleaks、MSRV、CI 全绿；`main` 干净且与 tag 一致

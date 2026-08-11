@@ -88,7 +88,7 @@ if git rev-parse "$version" >/dev/null 2>&1; then
   echo "tag $version 已存在；如需重发请先删除" >&2
   exit 1
 fi
-git tag "$version"
+git tag -a "$version" -m "FreeFM v0.1.0"
 git push origin "$version"
 echo "[5/8] tag $version 已推送；等待 Release workflow（构建/校验/attest/SBOM）完成后继续。"
 
@@ -97,6 +97,12 @@ attempt=0
 while [ "$attempt" -lt 60 ]; do
   attempt=$((attempt + 1))
   run_id=$(gh run list --workflow release.yml --branch "$version" --limit 1 --json databaseId,status --jq 'select(.[0].status == "completed") | .[0].databaseId // empty' 2>/dev/null || true)
+  if [ -z "$run_id" ] && [ "$attempt" -ge 3 ]; then
+    # `gh run list --branch` is unreliable for tag-triggered runs; fall back to the API.
+    run_id=$(gh api "repos/Yuxin-Qiao/FreeFM/actions/runs?event=push&per_page=20" \
+      --jq '.workflow_runs[] | select(.head_branch=="'"$version"'" and .name=="Release") | select(.status=="completed") | .id' \
+      2>/dev/null | head -1 || true)
+  fi
   [ -n "$run_id" ] && break
   sleep 15
 done
@@ -111,9 +117,71 @@ if [ "$conclusion" != "success" ]; then
 fi
 echo "[5/8] Release workflow 全绿。"
 
-# 6. Publish the Homebrew tap formula pinned to this tag with real SHA-256.
+# 6. Verify every release artifact, publish the Homebrew tap formula pinned to
+#    this tag with real SHA-256, and confirm the release notes carry the
+#    required disclaimers (C2/C5).
 art_dir=$(mktemp -d "${TMPDIR:-/tmp}/freefm-release.XXXXXX")
 gh release download "$version" --repo Yuxin-Qiao/FreeFM --dir "$art_dir"
+
+# C2: every required asset must be present and sidecar checksums must match.
+for asset in \
+  "freefm-$version-darwin-arm64.tar.gz" \
+  "freefm-$version-darwin-arm64.tar.gz.sha256" \
+  "freefm-$version-linux-x86_64.tar.gz" \
+  "freefm-$version-linux-x86_64.tar.gz.sha256" \
+  "freefm-$version-linux-arm64.tar.gz" \
+  "freefm-$version-linux-arm64.tar.gz.sha256" \
+  "freefm-workbuddy.zip" \
+  "freefm-sbom.cdx.json"; do
+  if [ ! -s "$art_dir/$asset" ]; then
+    echo "Release 缺少产物 $asset，请检查下载目录 $art_dir" >&2
+    exit 1
+  fi
+done
+for plat in darwin-arm64 linux-x86_64 linux-arm64; do
+  tarball="$art_dir/freefm-$version-$plat.tar.gz"
+  expected=$(awk '{print $1}' "$tarball.sha256")
+  actual=$(shasum -a 256 "$tarball" | awk '{print $1}')
+  if [ "$expected" != "$actual" ]; then
+    echo "$plat checksum 与 sidecar 不一致，终止" >&2
+    exit 1
+  fi
+done
+if ! jq -e '.bomFormat == "CycloneDX"' "$art_dir/freefm-sbom.cdx.json" >/dev/null 2>&1; then
+  echo "SBOM 不是有效 CycloneDX JSON，终止" >&2
+  exit 1
+fi
+if ! unzip -l "$art_dir/freefm-workbuddy.zip" 2>/dev/null | grep -q "SKILL.md"; then
+  echo "WorkBuddy ZIP 缺少 SKILL.md，终止" >&2
+  exit 1
+fi
+
+# C5: release notes must cover the required disclaimers; append them if missing.
+notes_file=$(mktemp "${TMPDIR:-/tmp}/freefm-notes.XXXXXX")
+gh release view "$version" --repo Yuxin-Qiao/FreeFM --json body --jq .body >"$notes_file" 2>/dev/null || true
+need_edit=0
+for kw in experimental undocumented append-only candidate resident; do
+  if ! grep -qi "$kw" "$notes_file"; then
+    need_edit=1
+  fi
+done
+if [ "$need_edit" -eq 1 ]; then
+  cat >>"$notes_file" <<EOF
+
+---
+
+## FreeFM v0.1.0 release notes (supplement)
+
+- Experimental: relies on undocumented NetEase Cloud Music endpoints that may change without notice.
+- Ordinary accounts only (vipType == 0). No unlocking, grey-resolving, URL replacement, or audio downloading.
+- Playlist writes are strictly append-only; preview/audit are read-only.
+- Restricted-song free-version candidates are preview-only (candidate-only) and never auto-substituted.
+- One-shot CLI with zero resident processes; this release does not include automatic repair.
+EOF
+  gh release edit "$version" --repo Yuxin-Qiao/FreeFM --notes-file "$notes_file"
+  echo "已补充 Release notes 免责声明。"
+fi
+
 darwin_sha=$(shasum -a 256 "$art_dir/freefm-$version-darwin-arm64.tar.gz" 2>/dev/null | awk '{print $1}')
 linux_x86_sha=$(shasum -a 256 "$art_dir/freefm-$version-linux-x86_64.tar.gz" 2>/dev/null | awk '{print $1}')
 linux_arm_sha=$(shasum -a 256 "$art_dir/freefm-$version-linux-arm64.tar.gz" 2>/dev/null | awk '{print $1}')
@@ -146,7 +214,7 @@ fi
 brew tap Yuxin-Qiao/tap
 brew install freefm
 brew test freefm
-brew audit --strict freefm
+brew audit --strict --online Yuxin-Qiao/tap/freefm
 echo "[7/8] brew tap/install/test/audit 全部通过。"
 
 # 8. Un-pause the deterministic Hermes cron (no-agent, every 6h).
