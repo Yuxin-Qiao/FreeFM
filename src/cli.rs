@@ -63,7 +63,7 @@ preview  读取私人 FM 并预览加入、候选、跳过；绝不写远端歌�
 sync     读取私人 FM，并 append-only 写入 FreeFM · Auto\n\
 audit    只读复查 FreeFM · Auto 全部歌曲当前是否仍可免费完整播放\n\
 review   交互式确认免费同曲候选，仅本机保存 trusted mapping\n\
-status   检查本机会话和登录状态\n\
+status   检查本机会话、登录状态和本地运行统计\n\
 doctor   检查本机状态、权限和 API 登录可用性
 tui      打开轻量交互界面；不会改变命令的安全边界
 version  输出版本号"

@@ -1,6 +1,8 @@
 mod tui;
 
-use freefm::{AppError, Cli, Paths, VERSION, audit_human, emit, json_error, preview_human, run};
+use freefm::{
+    AppError, Cli, Paths, VERSION, audit_human, emit, json_error, preview_human, run, status_human,
+};
 use std::env;
 use std::io::{self, IsTerminal};
 use std::process::ExitCode;
@@ -48,13 +50,7 @@ fn main() -> ExitCode {
         Ok(value) => {
             let human = match cli.command.as_str() {
                 "auth" => "登录成功，会话已保存到本机。".to_string(),
-                "status" => {
-                    if value["authenticated"] == true {
-                        "已登录，会话可用。".to_string()
-                    } else {
-                        "未登录或会话已失效。".to_string()
-                    }
-                }
+                "status" => status_human(&value),
                 "preview" => preview_human(&value),
                 "sync" => format!(
                     "同步完成：计划加入 {} 首，已验证歌单写入。",
