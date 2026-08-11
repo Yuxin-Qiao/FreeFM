@@ -67,6 +67,10 @@ class ExtractJsonTests(unittest.TestCase):
         with self.assertRaises(ai_review.ParseError):
             ai_review.extract_json('{"verdict": "approve"')
 
+    def test_missing_content_raises(self):
+        with self.assertRaises(ai_review.ParseError):
+            ai_review.extract_json(None)
+
 
 class VerdictBlockingTests(unittest.TestCase):
     def test_approve_not_blocking(self):

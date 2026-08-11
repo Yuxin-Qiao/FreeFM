@@ -53,7 +53,7 @@ native Rust CLI with no LLM, daemon, Node, Python, or Docker.
 | A-27 | 7-day passive observation | live | BLOCKED_EXTERNAL | until 2026-08-16 23:21 Asia/Shanghai; no fabricated results |
 | A-28 | Resource profile unchanged by audit/review/trusted (size, cold start, RSS, state size, no daemon/db) | static | PASS | numbers in section below; binary grew 1.6% (1,854,240 -> 1,887,456 B), no new deps |
 | A-29 | README claims match implementation (long-lived = detect+report, not auto-repair; candidate = review/approve, not auto-swap; audit in automation) | static | PASS | README/zh-CN updated this batch; audit job documented; no overclaim remains |
-| A-30 | Homebrew/WorkBuddy import/other platforms | external | NOT_APPLICABLE for v0.1 gate (P2); installer smoke PASS | P2 list |
+| A-30 | Homebrew/WorkBuddy import/other platforms | external | PARTIAL (WorkBuddy PASS; Homebrew pending release) | WorkBuddy 5.3.11 local client imported `freefm` on 2026-08-12 after built-in security scan; Homebrew remains gated on v0.1.0 release |
 
 ## Exit-code matrix (verified on the release binary, no session)
 
@@ -79,7 +79,7 @@ native Rust CLI with no LLM, daemon, Node, Python, or Docker.
 
 - P0: no FAIL found in anything verifiable offline; live chain pending user (L1-L3).
 - P1: review revoke/replace gap found and fixed this batch (A-21); audit automation gap found and fixed this batch (A-16); both covered by new regression tests and CI.
-- P2 (not blocking v0.1): Windows, Homebrew tap, WorkBuddy signed import, TUI polish, auto-repair (intentionally absent in v0.1).
+- P2 (not blocking v0.1): Windows, Homebrew tap, TUI polish, auto-repair (intentionally absent in v0.1); WorkBuddy signed client import is verified, while marketplace publication remains outside this gate.
 
 ## BLOCKED_USER_ACTION steps
 
