@@ -20,6 +20,7 @@ import argparse
 import json
 import os
 import re
+import socket
 import subprocess
 import sys
 import urllib.error
@@ -157,7 +158,10 @@ def call_model(endpoint, api_key, model, messages, timeout=REQUEST_TIMEOUT):
     )
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
-            return json.loads(response.read().decode())
+            try:
+                return json.loads(response.read().decode())
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise ParseError("invalid JSON response from model endpoint") from exc
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode(errors="replace")[:500]
         if exc.code in (401, 403):
@@ -167,6 +171,8 @@ def call_model(endpoint, api_key, model, messages, timeout=REQUEST_TIMEOUT):
         raise HttpError(exc.code, detail) from exc
     except urllib.error.URLError as exc:
         raise NetworkError(str(exc)) from exc
+    except (TimeoutError, socket.timeout) as exc:
+        raise NetworkError("model request timed out") from exc
 
 
 def extract_json(text):
@@ -293,12 +299,11 @@ def run_review(cfg, model_caller=call_model):
         return 2
     try:
         content = data["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError):
-        raise ParseError("unexpected chat completion response shape") from None
-    try:
         verdict = extract_json(content)
         blocking = verdict_blocking(verdict)
-    except (json.JSONDecodeError, ParseError) as exc:
+    except (json.JSONDecodeError, KeyError, IndexError, ParseError, TypeError) as exc:
+        if not isinstance(exc, ParseError):
+            exc = ParseError("unexpected chat completion response shape")
         print(f"AI verification skipped: {exc}", file=sys.stderr)
         return 2
     write_output(cfg.output, render_report(meta, verdict))

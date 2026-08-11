@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -152,6 +153,14 @@ class RunReviewTests(unittest.TestCase):
         )
         self.assertEqual(code, 2)
 
+    def test_unexpected_response_shape_exits_two(self):
+        cfg, tmp = make_cfg(diff_text="@@ -1 +1 @@\n-old\n+new\n")
+        self.addCleanup(tmp.cleanup)
+        code = ai_review.run_review(
+            cfg, model_caller=lambda endpoint, api_key, model, messages: {"choices": []}
+        )
+        self.assertEqual(code, 2)
+
     def test_api_key_never_in_output(self):
         cfg, tmp = make_cfg(diff_text="@@ -1 +1 @@\n-old\n+new\n")
         self.addCleanup(tmp.cleanup)
@@ -197,6 +206,30 @@ class RunReviewTests(unittest.TestCase):
 
         code = ai_review.run_review(cfg, model_caller=should_not_run)
         self.assertEqual(code, 0)
+
+
+class CallModelTests(unittest.TestCase):
+    def test_invalid_http_json_is_parse_error(self):
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                return False
+
+            def read(self):
+                return b"not json"
+
+        with mock.patch.object(ai_review.urllib.request, "urlopen", return_value=Response()):
+            with self.assertRaises(ai_review.ParseError):
+                ai_review.call_model("https://example.invalid", FAKE_KEY, "test-model", [])
+
+    def test_timeout_is_network_error(self):
+        with mock.patch.object(
+            ai_review.urllib.request, "urlopen", side_effect=TimeoutError
+        ):
+            with self.assertRaises(ai_review.NetworkError):
+                ai_review.call_model("https://example.invalid", FAKE_KEY, "test-model", [])
 
 
 if __name__ == "__main__":
