@@ -166,9 +166,9 @@ fixture suite (43 lib + 4 TUI tests passing):
   `FreeFM · Auto` grows slowly; the binary still supports any user-chosen
   frequency and FreeFM itself still contains no scheduler.
 
-Live-account behavior of `audit` and `review` (including the FM-queue
-consumption question) is pending the human-in-the-loop experiment in
-`scripts/fm-queue-experiment.sh`; no result is claimed here until it runs.
+Live-account behavior of `audit` and `review` remains a read-only operational
+check; the FM-queue consumption question was exercised separately below by the
+account owner. No audit/review command is scheduled by the validation job.
 
 ## FM-queue consumption experiment (2026-08-10, run by the account owner)
 
@@ -190,25 +190,25 @@ conservative 6-hour default recommendation and do not increase frequency based
 on this result. If a later sample shows queue advancement, reduce frequency or
 add an explicit user opt-in.
 
-## Daily aggregate 2026-08-11 (validation still running, read-only)
+## Daily aggregate 2026-08-12 (validation still running, read-only)
 
 Source: `~/.freefm-validation/`; only timestamps, counts, booleans, and
 failure types are recorded. No cookies, account identifiers, song IDs/titles,
 or URLs are stored in this document.
 
-Session (`session.jsonl`, n=36):
+Session (`session.jsonl`, n=49):
 
-- first sample 2026-08-09T15:21:34Z, last sample 2026-08-11T02:25:43Z;
-- 36/36 `ok`, 36/36 `authenticated`, `login_required` count = 0;
+- first sample 2026-08-09T15:21:34Z, last sample 2026-08-11T15:27:11Z;
+- 49/49 `ok`, 49/49 `authenticated`, `login_required` count = 0;
 - unique `account_vip_type` values = `[0]` (ordinary account confirmed on
   every sample);
 - failure types: none.
 
-Passive FM (`passive.jsonl`, n=38):
+Passive FM (`passive.jsonl`, n=51):
 
 - first sample 2026-08-09T14:28:33Z (two pre-LaunchAgent manual samples),
-  hourly sampling from 15:21:37Z, last sample 2026-08-11T02:25:46Z;
-- 38 unique salted batch hashes, 106 unique salted track hashes, zero
+  hourly sampling from 15:21:37Z, last sample 2026-08-11T15:27:16Z;
+- 51 unique salted batch hashes, 137 unique salted track hashes, zero
   failures; batches continue to contain new tracks;
 - HTTP requests per fetch: 11-17 (mode 15), consistent with one preview.
 
@@ -216,8 +216,8 @@ LaunchAgent `com.freefm.validation`:
 
 - loaded, hourly, last exit 0; script contains only `status` and `preview`
   invocations; keyword scan for sync/play/skip/trash/scrobble found none;
-- evidence size bounded: session.jsonl 6,192 B + passive.jsonl 19,604 B
-  (total ~25.8 KB after ~35 h of sampling).
+- evidence size bounded: session.jsonl 8,428 B + passive.jsonl 26,377 B
+  (total ~34.8 KB after ~58 h of sampling).
 
 Status: within the +7d observation window (gate 2026-08-16 23:21
 Asia/Shanghai). No sync or cron has been enabled.
