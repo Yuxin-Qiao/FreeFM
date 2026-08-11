@@ -20,6 +20,10 @@ git diff --check
 Tests must use the fake `RemoteApi` seam and minimized fixtures. CI must never
 contact NetEase or use a real account.
 
+The repository automation, workflow security boundaries, required checks, and
+external GitHub setup are documented in
+[docs/github-automation.md](docs/github-automation.md).
+
 ## Data and credential rules
 
 Do not commit cookies, `MUSIC_U`, QR keys or images, account/profile IDs, real

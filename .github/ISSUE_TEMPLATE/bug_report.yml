@@ -1,0 +1,44 @@
+name: Bug report
+description: Report a reproducible problem with FreeFM
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: Use fake data and redact credentials, IDs, URLs, and complete API responses.
+  - type: input
+    id: version
+    attributes:
+      label: FreeFM version
+      placeholder: v0.1.0 or commit SHA
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: macOS/Linux, architecture, shell
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Redacted output
+      description: Do not include cookies, MUSIC_U, QR keys, playback URLs, IDs, or complete responses.

@@ -28,6 +28,7 @@ def make_cfg(diff_text="", pr_number="42", title="feat: test", body="test body")
         head="unused",
         pr_number=pr_number,
         diff_file=str(diff_path),
+        files_file="",
         context_dir=tmp.name,
         output="",
         title=title,
@@ -181,6 +182,31 @@ class RunReviewTests(unittest.TestCase):
 
         code = ai_review.run_review(cfg, model_caller=should_not_run)
         self.assertEqual(code, 0)
+
+    def test_files_file_is_included_in_model_prompt(self):
+        cfg, tmp = make_cfg(diff_text="@@ -1 +1 @@\n-old\n+new\n")
+        self.addCleanup(tmp.cleanup)
+        files_path = Path(tmp.name) / "files.txt"
+        files_path.write_text("src/main.rs\nsrc/lib.rs\n")
+        cfg.files_file = str(files_path)
+        seen = {}
+
+        def caller(endpoint, api_key, model, messages):
+            seen["prompt"] = messages[1]["content"]
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "content": '{"verdict":"approve","blockers":[],"acceptance":{}}'
+                        }
+                    }
+                ]
+            }
+
+        code = ai_review.run_review(cfg, model_caller=caller)
+        self.assertEqual(code, 0)
+        self.assertIn("Changed files (2):", seen["prompt"])
+        self.assertIn("- src/main.rs", seen["prompt"])
 
     def test_unconfigured_model_skips_fail_open(self):
         cfg, tmp = make_cfg(diff_text="@@ -1 +1 @@\n-old\n+new\n")

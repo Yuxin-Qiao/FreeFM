@@ -100,10 +100,18 @@ def truncate(text, limit):
     return text[:limit] + marker, True
 
 
-def collect_diff(base, head, diff_file, cwd):
+def collect_diff(base, head, diff_file, files_file, cwd):
     if diff_file:
         diff_text = Path(diff_file).read_text(errors="replace")
-        files = []
+        files = (
+            [
+                line
+                for line in Path(files_file).read_text(errors="replace").splitlines()
+                if line.strip()
+            ]
+            if files_file
+            else []
+        )
     else:
         diff_text = git(cwd, "diff", "--unified=3", f"{base}...{head}")
         files = [
@@ -258,7 +266,7 @@ def run_review(cfg, model_caller=call_model):
     meta = {"pr_number": cfg.pr_number, "model": cfg.model}
     if cfg.dry_run:
         diff_text, files, diff_truncated = collect_diff(
-            cfg.base, cfg.head, cfg.diff_file, cfg.context_dir
+            cfg.base, cfg.head, cfg.diff_file, cfg.files_file, cfg.context_dir
         )
         user_prompt = build_user_prompt(
             cfg.pr_number, cfg.title, cfg.body, files, diff_text, diff_truncated
@@ -279,7 +287,7 @@ def run_review(cfg, model_caller=call_model):
         )
         return 2
     diff_text, files, diff_truncated = collect_diff(
-        cfg.base, cfg.head, cfg.diff_file, cfg.context_dir
+        cfg.base, cfg.head, cfg.diff_file, cfg.files_file, cfg.context_dir
     )
     context = load_context(cfg.context_dir)
     user_prompt = build_user_prompt(
@@ -316,6 +324,7 @@ def parse_args(argv):
     parser.add_argument("--head", default="HEAD")
     parser.add_argument("--pr-number", default="")
     parser.add_argument("--diff-file", default="")
+    parser.add_argument("--files-file", default="")
     parser.add_argument("--context-dir", default=".")
     parser.add_argument("--output", default="")
     parser.add_argument("--title", default=os.environ.get("PR_TITLE", ""))
@@ -331,6 +340,7 @@ def main(argv=None):
         head=args.head,
         pr_number=args.pr_number,
         diff_file=args.diff_file,
+        files_file=args.files_file,
         context_dir=args.context_dir,
         output=args.output,
         title=args.title,

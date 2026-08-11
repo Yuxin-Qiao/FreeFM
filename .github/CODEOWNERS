@@ -1,0 +1,5 @@
+# Known repository owner; keep security-sensitive automation under explicit review.
+* @Yuxin-Qiao
+/.github/ @Yuxin-Qiao
+/scripts/ @Yuxin-Qiao
+/SECURITY.md @Yuxin-Qiao
