@@ -42,6 +42,20 @@ const ITEMS: &[MenuItem] = &[
         opens_settings: false,
     },
     MenuItem {
+        title: "人工确认免费版本",
+        command: Some("review"),
+        description: "在普通终端中确认一次免费同曲候选；只保存本机映射",
+        writes_remote: false,
+        opens_settings: false,
+    },
+    MenuItem {
+        title: "审计已有歌曲",
+        command: Some("audit"),
+        description: "只读复查 FreeFM · Auto 当前是否仍可免费完整播放",
+        writes_remote: false,
+        opens_settings: false,
+    },
+    MenuItem {
         title: "同步到 FreeFM · Auto",
         command: Some("sync"),
         description: "仅追加严格确认可免费完整播放的原歌曲",
@@ -340,6 +354,18 @@ mod tests {
             .filter_map(|item| item.command)
             .collect();
         assert_eq!(writes, vec!["sync"]);
+    }
+
+    #[test]
+    fn audit_and_review_are_present_and_read_only() {
+        for command in ["audit", "review"] {
+            let item = ITEMS
+                .iter()
+                .find(|item| item.command == Some(command))
+                .expect("TUI command exists");
+            assert!(!item.writes_remote);
+            assert!(!item.opens_settings);
+        }
     }
 
     #[test]

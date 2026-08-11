@@ -91,9 +91,10 @@ or API errors, give redacted guidance only; never change DNS, VPN, or proxies.
 
 ## TUI
 
-`freefm tui` is a native Rust menu for auth, preview, sync, status, doctor, and
-**settings**. Use arrows or `j`/`k`, `o` toggles JSON output, `q` exits; the
-settings page toggles quiet mode (`u`) for scheduler-friendly output. Sync
+`freefm tui` is a native Rust menu for auth, preview, review, audit, sync, status,
+doctor, and **settings**. Review and audit leave the menu and invoke the normal
+CLI implementations; both are read-only with respect to the remote playlist.
+Use arrows or `j`/`k`, `o` toggles JSON output, `q` exits; the settings page toggles quiet mode (`u`) for scheduler-friendly output. Sync
 requires an explicit `y`; Enter cancels. Automation must use the non-interactive
 CLI, never the TUI.
 
