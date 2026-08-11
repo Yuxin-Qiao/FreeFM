@@ -34,11 +34,17 @@ On 2026-08-10, GitHub Release precompiled artifact build matrix (`.github/workfl
 A zero-dependency POSIX installer script (`scripts/install.sh`) performs OS/arch detection, release downloading, SHA-256 checksum validation, installation to `$HOME/.local/bin/freefm`, and `--version` verification. It does not install Rust/Node/Python/Docker, does not use `sudo`, and does not alter shell profiles. A Homebrew tap formula template (`scripts/formula/freefm.rb`) is provided for `Yuxin-Qiao/homebrew-tap`.
 
 The WorkBuddy packaging script produced a ZIP containing only
-`freefm/SKILL.md` and `freefm/scripts/freefm-sync.sh`; CI validates both paths
-and shell syntax. Tencent WorkBuddy 5.1.2 for Apple silicon was downloaded from
-the official archive, installed, and accepted by macOS Gatekeeper with a
-stapled notarization ticket and the Tencent Technology (Shanghai) Company
-Limited Developer ID signature.
+`freefm/SKILL.md` and the two fixed command helpers under
+`freefm/scripts/`; CI validates those paths and shell syntax. Tencent WorkBuddy
+5.1.2 for Apple silicon was downloaded from the official archive, installed,
+and accepted by macOS Gatekeeper with a stapled notarization ticket and the
+Tencent Technology (Shanghai) Company Limited Developer ID signature.
+
+On 2026-08-12, the generated package was uploaded through the installed Tencent
+WorkBuddy 5.3.11 client. Its built-in security scan completed and the `freefm`
+skill appeared in the client's “我安装的” list (count 1). This verifies client
+import only; no NetEase credential was entered and no sync or scheduler was
+enabled.
 
 ### Codex platform support
 
@@ -138,7 +144,6 @@ GitHub commit and moved both `alpha` and `latest` to that version.
 ## Remaining external gates
 
 - Complete the running 7-day passive FM observation (gate: 2026-08-16 23:21 Asia/Shanghai) before enabling default unattended background synchronization.
-- Complete the signed Tencent WorkBuddy client import after interactive login.
 
 ## Functional additions: audit, review, trusted mapping (2026-08-10)
 
