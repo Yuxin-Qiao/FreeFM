@@ -122,8 +122,11 @@ wc -c "$EV/session.jsonl" "$EV/passive.jsonl"   # 只记录字节数
 
 ```sh
 launchctl print "gui/$(id -u)/com.freefm.validation" >/dev/null && echo loaded
-rg -o 'freefm [a-z]+' ~/.local/libexec/freefm-validation-observe.sh | sort -u
-# 期望输出只含 status 和 preview
+rg -o '\b(status|preview|sync|play|skip|trash|scrobble|audit|review|tui)\b' \
+  ~/.local/libexec/freefm-validation-observe.sh \
+  ~/.local/libexec/freefm-passive-fm-observe.sh | sort | uniq -c
+# 期望输出只含 status 和 preview（脚本以 $binary 变量调用，不能匹配
+# "freefm <cmd>" 字样；2026-08-11 已实测该命令，输出 status×2、preview×1）
 ```
 
 每日通过标准：authenticated 数与样本数相等、全部 `vipType=0`、无失败类型、
@@ -432,7 +435,17 @@ owner 单独批准才执行；此前一律以 `status`/`preview` 验证通道。
 - G11 trusted mapping 真实重命中：等自然 FM 轮转，出现同原曲时确认
   `preview` 输出 `trusted_mapping` 且重新验证目标仍可播；不出现则以
   fixture 证据 + 明示“真实重命中未发生”收尾。
-- G12 PR #13：发布收口前由团队决策合并或关闭；不得让未审 bot 混入发布。
+- G12 PR #13（`codex/ai-review-bot`）：发布收口前由团队决策合并或关闭；
+  不得让未审 bot 混入发布。2026-08-11 复核证据：PR 标题
+  `ci: add AI verification bot (code review + acceptance gate)`，+622/-0，
+  作者 Yuxin-Qiao，CI 全绿（ai-review/msrv/rust×2/rustsec）。内容：
+  `.github/workflows/ai-review.yml` 在每个 PR 上调用外部模型端点
+  （`secrets.AI_REVIEW_API_KEY/ENDPOINT/MODEL`），ai-review 判定 exit 1
+  会阻塞合并（fail-closed），基础设施故障 exit 2 fail-open；附带
+  `scripts/ai-review.py`（342 行）与测试（203 行）。风险：未人工审阅的
+  LLM 合并闸门 + 新 secret 依赖，与 v0.1 发布冻结冲突。建议：
+  v0.1.0 发布前不合并；发布后若要采用，先降级为 advisory（不阻塞
+  合并）并人工审阅脚本后再启用。决策由团队做出，本计划不预设结论。
 - G13 文档最终复核：README 30 秒回答“是什么/安全吗/怎么装/成熟度”；
   中英命令与平台状态一致；平台表格官方彩色标志不依赖第三方热链；
   `V01-VALIDATION.md` 区分“真实证明/离线 fixture/未验证”；SECURITY、
