@@ -36,7 +36,7 @@ mod tests {
         privilege_i64, same_recording_score, song_from_value,
     };
     use crate::error::AppResult;
-    use crate::plan::{Action, account_uid, build_plan, select_playlist};
+    use crate::plan::{Action, account_uid, build_plan, build_plan_with_limit, select_playlist};
     use crate::protocol::{
         PLAYLIST_NAME, RemoteApi, playlist_detail_extra_requests, playlist_track_ids,
         remote_code_error,
@@ -139,6 +139,23 @@ mod tests {
                 track_failure_on_call: None,
                 save_session_failure: false,
             }
+        }
+
+        fn free_with_many_tracks(mut self) -> Self {
+            for id in ["2", "3", "4"] {
+                let track = song(id, "Free", "Artist", 180_000, 0);
+                self.probes.insert(
+                    id.to_string(),
+                    Probe {
+                        has_url: true,
+                        fee: Some(0),
+                        free_trial: false,
+                    },
+                );
+                self.details.insert(id.to_string(), track.clone());
+                self.fm.push(track);
+            }
+            self
         }
 
         fn restricted_with_candidate() -> Self {
@@ -703,12 +720,147 @@ mod tests {
     }
 
     #[test]
+    fn max_additions_cli_is_scoped_and_validated() {
+        let cli = Cli::parse([
+            "freefm".to_string(),
+            "preview".to_string(),
+            "--max-additions".to_string(),
+            "3".to_string(),
+        ])
+        .unwrap();
+        assert_eq!(cli.max_additions, Some(3));
+        for raw in ["0", "-1", "10001", "nope"] {
+            assert!(matches!(
+                Cli::parse([
+                    "freefm".to_string(),
+                    "sync".to_string(),
+                    "--max-additions".to_string(),
+                    raw.to_string()
+                ]),
+                Err(AppError::Usage(_))
+            ));
+        }
+        assert!(matches!(
+            Cli::parse([
+                "freefm".to_string(),
+                "audit".to_string(),
+                "--max-additions".to_string(),
+                "1".to_string()
+            ]),
+            Err(AppError::Usage(_))
+        ));
+        assert!(matches!(
+            Cli::parse([
+                "freefm".to_string(),
+                "preview".to_string(),
+                "--max-additions".to_string()
+            ]),
+            Err(AppError::Usage(_))
+        ));
+    }
+
+    #[test]
+    fn max_additions_defers_only_eligible_items_in_plan_order() {
+        for (limit, expected_selected, expected_deferred) in [(1, 1, 3), (2, 2, 2), (10, 4, 0)] {
+            let mut remote = FakeRemote::free().free_with_many_tracks();
+            let report = build_plan_with_limit(
+                &mut remote,
+                "u",
+                &StateFile::default(),
+                &TrustedStore::default(),
+                "preview",
+                false,
+                Some(limit),
+            )
+            .unwrap();
+            assert_eq!(report.would_add_ids.len(), expected_selected);
+            assert_eq!(report.eligible_add_count, 4);
+            assert_eq!(report.deferred_count, expected_deferred);
+            assert_eq!(
+                report
+                    .decisions
+                    .iter()
+                    .filter(|decision| matches!(decision.action, Action::DeferredByBudget))
+                    .count(),
+                expected_deferred
+            );
+        }
+    }
+
+    #[test]
+    fn budget_does_not_count_candidates_or_existing_tracks() {
+        let mut candidate_remote =
+            FakeRemote::restricted_with_candidate().restricted_with_many_candidates();
+        let candidate_report = build_plan_with_limit(
+            &mut candidate_remote,
+            "u",
+            &StateFile::default(),
+            &TrustedStore::default(),
+            "preview",
+            false,
+            Some(1),
+        )
+        .unwrap();
+        assert_eq!(candidate_report.would_add_ids.len(), 0);
+        assert_eq!(candidate_report.eligible_add_count, 0);
+        assert_eq!(candidate_report.deferred_count, 0);
+
+        let mut existing_remote = FakeRemote::free();
+        existing_remote.playlists = vec![PlaylistSummary {
+            id: "p1".to_string(),
+            name: PLAYLIST_NAME.to_string(),
+            track_count: 1,
+            owner_id: Some("u".to_string()),
+        }];
+        existing_remote.tracks.insert("1".to_string());
+        let existing_report = build_plan_with_limit(
+            &mut existing_remote,
+            "u",
+            &StateFile::default(),
+            &TrustedStore::default(),
+            "preview",
+            false,
+            Some(1),
+        )
+        .unwrap();
+        assert!(matches!(
+            existing_report.decisions[0].action,
+            Action::AlreadyPresent
+        ));
+        assert_eq!(existing_report.would_add_ids.len(), 0);
+        assert_eq!(existing_report.eligible_add_count, 0);
+    }
+
+    #[test]
+    fn sync_never_writes_more_than_budget() {
+        let root = env::temp_dir().join(format!("freefm-budget-sync-{}", now_seconds()));
+        let paths = Paths { root: root.clone() };
+        let mut remote = FakeRemote::free().free_with_many_tracks();
+        let report = build_plan_with_limit(
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            &TrustedStore::default(),
+            "sync",
+            false,
+            Some(2),
+        )
+        .unwrap();
+        let synced = sync(&paths, report, "u", &mut remote).unwrap();
+        assert_eq!(remote.add_calls, 1);
+        assert_eq!(synced.would_add_ids.len(), 2);
+        assert_eq!(remote.tracks.len(), 2);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn quiet_wins_on_success_but_json_errors_remain_visible() {
         let cli = Cli {
             command: "sync".to_string(),
             json: true,
             quiet: true,
             data_dir: None,
+            max_additions: None,
         };
         let value = json!({"ok": true});
         assert!(rendered_output(&cli, &value, "ok", false).is_none());
@@ -737,6 +889,23 @@ mod tests {
         assert!(output.contains("已存在\n  已有歌 — 戊"));
         assert!(output.contains("汇总：加入 2 · 候选 1 · 跳过 1 · 已存在 1"));
         assert!(!output.contains("123456"));
+    }
+
+    #[test]
+    fn preview_human_explains_budget_deferred_items() {
+        let output = preview_human(&json!({
+            "private_fm_count": 2,
+            "max_additions": 1,
+            "eligible_add_count": 2,
+            "decisions": [
+                {"action":"add_original","original_title":"加入歌","original_artist":"甲","reason":"原曲免费"},
+                {"action":"deferred_by_budget","original_title":"延后歌","original_artist":"乙","reason":"本次预算已用完"}
+            ]
+        }));
+        assert!(output.contains("延后\n  延后歌 — 乙"));
+        assert!(output.contains("预算：最多加入 1 首"));
+        assert!(output.contains("符合加入条件：2"));
+        assert!(output.contains("因预算延后：1"));
     }
 
     #[test]

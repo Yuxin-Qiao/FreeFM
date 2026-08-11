@@ -60,9 +60,11 @@ curl -fsSL https://raw.githubusercontent.com/Yuxin-Qiao/FreeFM/main/scripts/inst
 ```sh
 freefm auth          # 用网易云官方客户端扫码登录
 freefm preview       # 只读预览：展示将加入 / 候选 / 跳过
+freefm preview --max-additions 10 # 可选：限制本次最多计划加入 10 首
 freefm audit         # 只读复查：已保存歌曲现在是否仍可免费播放（exit 3 = 需要关注）
 freefm review        # 交互式：人工确认一次免费同曲候选（仅本机记录）
 freefm sync          # 只追加写入到 "FreeFM · Auto" 歌单
+freefm sync --max-additions 10 # 可选硬上限；不传参数仍保持不限制
 freefm sync --quiet  # 定时任务路径；成功时无输出
 
 # 终端交互界面：

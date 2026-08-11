@@ -52,12 +52,15 @@ pub(crate) fn sync<R: RemoteApi>(
     };
     let existing = remote.playlist_tracks(&playlist_id)?;
     let (mut state, _) = load_state(paths)?;
-    let ids_to_add = report
+    let mut ids_to_add = report
         .would_add_ids
         .iter()
         .filter(|id| !existing.contains(*id))
         .cloned()
         .collect::<Vec<_>>();
+    if let Some(limit) = report.max_additions {
+        ids_to_add.truncate(limit);
+    }
     report.would_add_ids = ids_to_add.clone();
     if !ids_to_add.is_empty() {
         remote.add_tracks(&playlist_id, &ids_to_add)?;

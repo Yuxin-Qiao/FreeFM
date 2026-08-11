@@ -2,7 +2,7 @@ use crate::audit::audit;
 use crate::auth::{authenticate, new_client};
 use crate::cli::{Cli, usage};
 use crate::error::{AppError, AppResult};
-use crate::plan::{account_uid, account_vip_type, build_plan};
+use crate::plan::{account_uid, account_vip_type, build_plan_with_limit};
 use crate::protocol::{FM_ENDPOINT, PLAYLIST_ADD_ENDPOINT, PLAYLIST_CREATE_ENDPOINT, Remote};
 use crate::storage::{
     Paths, StateFile, SyncLock, TrustedStore, load_session, load_state, load_trusted, now_seconds,
@@ -81,13 +81,14 @@ pub fn run(cli: Cli) -> AppResult<Value> {
             let mut remote = Remote::new(new_client(Some(&session))?);
             let account = require_login(&mut remote)?;
             require_ordinary_account(&account)?;
-            let mut report = build_plan(
+            let mut report = build_plan_with_limit(
                 &mut remote,
                 &account.uid,
                 &state,
                 &trusted,
                 &cli.command,
                 state_corrupt_recovered,
+                cli.max_additions,
             )?;
             report.trusted_corrupt_recovered = trusted_corrupt_recovered;
             if cli.command == "sync" {
