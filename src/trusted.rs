@@ -1,6 +1,6 @@
 use crate::domain::{Availability, availability_from_fields, merge_song_metadata};
 use crate::error::AppResult;
-use crate::plan::{Action, build_plan};
+use crate::plan::{Action, Candidate, build_plan};
 use crate::protocol::RemoteApi;
 use crate::storage::{Paths, StateFile, load_trusted, save_trusted};
 use serde_json::{Value, json};
@@ -12,52 +12,76 @@ pub(crate) struct CandidatePrompt {
     pub(crate) original_title: String,
     pub(crate) original_artist: String,
     pub(crate) original_duration_ms: Option<i64>,
-    pub(crate) candidate_id: String,
-    pub(crate) candidate_title: String,
-    pub(crate) candidate_artist: String,
-    pub(crate) candidate_duration_ms: Option<i64>,
-    pub(crate) candidate_album: Option<String>,
-    pub(crate) version_markers: Vec<String>,
+    pub(crate) candidates: Vec<Candidate>,
     pub(crate) reason: String,
 }
 
 fn render_prompt(prompt: &CandidatePrompt, json: bool) {
-    let duration_diff = match (prompt.original_duration_ms, prompt.candidate_duration_ms) {
-        (Some(left), Some(right)) => format!(
-            "{} 秒（原 {:.1}s / 候选 {:.1}s）",
-            (right - left) as f64 / 1000.0,
-            left as f64 / 1000.0,
-            right as f64 / 1000.0
-        ),
-        _ => "未知".to_string(),
-    };
-    let lines = [
-        format!("原歌曲：{} - {}", prompt.original_title, prompt.original_artist),
+    let mut lines = vec![
         format!(
-            "候选：{} - {}",
-            prompt.candidate_title, prompt.candidate_artist
+            "原歌曲：{} - {}",
+            prompt.original_title, prompt.original_artist
         ),
-        format!("时长差异：{duration_diff}"),
-        format!("专辑：{}", prompt.candidate_album.as_deref().unwrap_or("未知")),
         format!(
-            "版本标记：{}",
-            if prompt.version_markers.is_empty() {
-                "无".to_string()
-            } else {
-                prompt.version_markers.join(", ")
-            }
+            "原曲时长：{}",
+            prompt
+                .original_duration_ms
+                .map(|duration| format!("{:.1}s", duration as f64 / 1000.0))
+                .unwrap_or_else(|| "未知".to_string())
         ),
+        format!(
+            "找到 {} 个全部通过严格免费验证的候选：",
+            prompt.candidates.len()
+        ),
+    ];
+    for (index, candidate) in prompt.candidates.iter().enumerate() {
+        let delta = candidate
+            .duration_delta_ms
+            .map(|value| format!("{:+.1}s", value as f64 / 1000.0))
+            .unwrap_or_else(|| "未知".to_string());
+        let markers = if candidate.version_markers.is_empty() {
+            "无".to_string()
+        } else {
+            candidate.version_markers.join(", ")
+        };
+        lines.push(format!(
+            "[{}] {} - {}",
+            index + 1,
+            candidate.title,
+            candidate.artist
+        ));
+        lines.push(format!(
+            "    专辑：{}",
+            candidate.album.as_deref().unwrap_or("未知")
+        ));
+        lines.push(format!("    时长差：{delta}；版本标记：{markers}"));
+    }
+    lines.extend([
+        "[0] 跳过".to_string(),
         format!("候选原因：{}", prompt.reason),
         "FreeFM 无法从网易 API 证明这是同一录音，需要你本人确认。".to_string(),
-        "确认后仅在本机记录 trusted mapping；之后该原曲再次出现时会确定性使用此免费版本，且每次仍会重新验证其可播性。".to_string(),
-        "确认该候选作为免费版本？[y/N] ".to_string(),
-    ];
+        format!("请选择候选编号 [0-{}]：", prompt.candidates.len()),
+    ]);
     for line in lines {
         if json {
             eprintln!("{line}");
         } else {
             println!("{line}");
         }
+    }
+}
+
+pub(crate) fn stdin_choose_candidate(prompt: &CandidatePrompt) -> Option<usize> {
+    let _ = io::stdout().flush();
+    let mut line = String::new();
+    if io::stdin().read_line(&mut line).is_err() {
+        return None;
+    }
+    let selected = line.trim().parse::<usize>().ok()?;
+    if selected == 0 || selected > prompt.candidates.len() {
+        None
+    } else {
+        Some(selected - 1)
     }
 }
 
@@ -104,6 +128,7 @@ pub(crate) fn stdin_manage(existing: &[(String, String)]) -> Vec<String> {
 /// originals and, only after explicit user confirmation, persists a local
 /// trusted mapping. Writes nothing remote; the only write is `trusted.json`.
 #[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
 pub(crate) fn review<
     R: RemoteApi,
     F: FnMut() -> bool,
@@ -115,6 +140,36 @@ pub(crate) fn review<
     state: &StateFile,
     state_corrupt_recovered: bool,
     json: bool,
+    confirm: F,
+    manage: M,
+) -> AppResult<Value> {
+    review_with_selector(
+        paths,
+        remote,
+        uid,
+        state,
+        state_corrupt_recovered,
+        json,
+        |_| Some(0),
+        confirm,
+        manage,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn review_with_selector<
+    R: RemoteApi,
+    S: FnMut(&CandidatePrompt) -> Option<usize>,
+    F: FnMut() -> bool,
+    M: FnMut(&[(String, String)]) -> Vec<String>,
+>(
+    paths: &Paths,
+    remote: &mut R,
+    uid: &str,
+    state: &StateFile,
+    state_corrupt_recovered: bool,
+    json: bool,
+    mut select: S,
     mut confirm: F,
     mut manage: M,
 ) -> AppResult<Value> {
@@ -142,23 +197,41 @@ pub(crate) fn review<
         if !matches!(decision.action, Action::CandidateOnly) {
             continue;
         }
-        let Some(candidate_id) = decision.selected_id.clone() else {
+        if decision.candidates.is_empty() {
             continue;
-        };
+        }
         let prompt = CandidatePrompt {
             original_id: decision.original_id.clone(),
             original_title: decision.original_title.clone(),
             original_artist: decision.original_artist.clone(),
             original_duration_ms: decision.original_duration_ms,
-            candidate_id: candidate_id.clone(),
-            candidate_title: decision.selected_title.clone().unwrap_or_default(),
-            candidate_artist: decision.selected_artist.clone().unwrap_or_default(),
-            candidate_duration_ms: decision.selected_duration_ms,
-            candidate_album: decision.selected_album.clone(),
-            version_markers: decision.selected_version_markers.clone(),
+            candidates: decision.candidates.clone(),
             reason: decision.reason.clone(),
         };
         render_prompt(&prompt, json);
+        let Some(candidate_index) = select(&prompt) else {
+            skipped.push(json!({
+                "original_id": decision.original_id,
+                "original_title": decision.original_title,
+                "reason": "用户跳过或候选编号无效"
+            }));
+            continue;
+        };
+        let Some(candidate) = prompt.candidates.get(candidate_index) else {
+            skipped.push(json!({
+                "original_id": decision.original_id,
+                "original_title": decision.original_title,
+                "reason": "候选编号无效"
+            }));
+            continue;
+        };
+        if json {
+            eprintln!("已选择：{} - {}", candidate.title, candidate.artist);
+            eprintln!("确认将该候选保存为 trusted mapping？[y/N]");
+        } else {
+            println!("已选择：{} - {}", candidate.title, candidate.artist);
+            println!("确认将该候选保存为 trusted mapping？[y/N]");
+        }
         if !confirm() {
             skipped.push(json!({
                 "original_id": decision.original_id,
@@ -168,8 +241,8 @@ pub(crate) fn review<
             continue;
         }
         // Re-verify the approved target right before persisting.
-        let target_details = remote.details(std::slice::from_ref(&candidate_id))?;
-        let still_free = target_details.get(&candidate_id).is_some_and(|song| {
+        let target_details = remote.details(std::slice::from_ref(&candidate.id))?;
+        let still_free = target_details.get(&candidate.id).is_some_and(|song| {
             let merged = merge_song_metadata(song, None);
             let probe = remote.playback_probe(&merged.id);
             probe.is_ok_and(|probe| {
@@ -184,13 +257,14 @@ pub(crate) fn review<
             }));
             continue;
         }
-        trusted.approve(&prompt.original_id, &prompt.candidate_id);
+        trusted.approve(&prompt.original_id, &candidate.id);
         save_trusted(paths, &trusted)?;
         approved.push(json!({
             "original_id": prompt.original_id,
             "original_title": prompt.original_title,
-            "target_id": prompt.candidate_id,
-            "target_title": prompt.candidate_title
+            "target_id": candidate.id,
+            "target_title": candidate.title,
+            "candidate_index": candidate_index + 1
         }));
     }
     let existing = trusted

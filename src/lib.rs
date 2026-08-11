@@ -50,7 +50,7 @@ mod tests {
         load_state, load_trusted, now_seconds, restrict_dir, save_trusted, write_private_json,
     };
     use crate::sync::{AccountContext, require_login, require_ordinary_account, sync};
-    use crate::trusted::review;
+    use crate::trusted::{review, review_with_selector};
     use serde_json::{Value, json};
     use std::collections::{HashMap, HashSet};
     use std::env;
@@ -94,6 +94,8 @@ mod tests {
         fm: Vec<Song>,
         details: HashMap<String, Song>,
         probes: HashMap<String, Probe>,
+        probe_calls: HashMap<String, u32>,
+        reverify_restricted: HashSet<String>,
         playlists: Vec<PlaylistSummary>,
         tracks: HashSet<String>,
         calls: u64,
@@ -123,6 +125,8 @@ mod tests {
                         free_trial: false,
                     },
                 )]),
+                probe_calls: HashMap::new(),
+                reverify_restricted: HashSet::new(),
                 playlists: Vec::new(),
                 tracks: HashSet::new(),
                 calls: 0,
@@ -166,6 +170,8 @@ mod tests {
                         },
                     ),
                 ]),
+                probe_calls: HashMap::new(),
+                reverify_restricted: HashSet::new(),
                 playlists: Vec::new(),
                 tracks: HashSet::new(),
                 calls: 0,
@@ -178,6 +184,22 @@ mod tests {
                 track_failure_on_call: None,
                 save_session_failure: false,
             }
+        }
+
+        fn restricted_with_many_candidates(mut self) -> Self {
+            for id in ["3", "4", "5", "6"] {
+                let candidate = song(id, "Same", "Artist", 180_000, 0);
+                self.probes.insert(
+                    id.to_string(),
+                    Probe {
+                        has_url: true,
+                        fee: Some(0),
+                        free_trial: false,
+                    },
+                );
+                self.details.insert(id.to_string(), candidate);
+            }
+            self
         }
     }
 
@@ -221,6 +243,15 @@ mod tests {
 
         fn playback_probe(&mut self, id: &str) -> AppResult<Probe> {
             self.calls += 1;
+            let calls = self.probe_calls.entry(id.to_string()).or_insert(0);
+            *calls += 1;
+            if self.reverify_restricted.contains(id) && *calls >= 2 {
+                return Ok(Probe {
+                    has_url: false,
+                    fee: Some(1),
+                    free_trial: false,
+                });
+            }
             Ok(self.probes.get(id).copied().unwrap_or(Probe {
                 has_url: false,
                 fee: None,
@@ -1016,6 +1047,108 @@ mod tests {
         assert!(report.would_add_ids.is_empty());
         assert!(matches!(report.decisions[0].action, Action::CandidateOnly));
         assert_eq!(report.decisions[0].selected_id.as_deref(), Some("2"));
+    }
+
+    #[test]
+    fn multiple_candidates_are_stable_and_capped_at_three() {
+        let mut remote = FakeRemote::restricted_with_candidate().restricted_with_many_candidates();
+        let report = build_plan(
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            &TrustedStore::default(),
+            "preview",
+            false,
+        )
+        .unwrap();
+        let decision = &report.decisions[0];
+        assert_eq!(decision.candidates.len(), 3);
+        assert_eq!(
+            decision
+                .candidates
+                .iter()
+                .map(|candidate| candidate.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["3", "4", "5"]
+        );
+        assert_eq!(decision.selected_id.as_deref(), Some("3"));
+        assert!(report.would_add_ids.is_empty());
+    }
+
+    #[test]
+    fn review_uses_explicitly_selected_second_candidate() {
+        let root = env::temp_dir().join(format!("freefm-review-multi-{}", now_seconds()));
+        let paths = Paths { root: root.clone() };
+        let mut remote = FakeRemote::restricted_with_candidate().restricted_with_many_candidates();
+        let result = review_with_selector(
+            &paths,
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            false,
+            true,
+            |prompt| {
+                assert_eq!(prompt.candidates.len(), 3);
+                Some(1)
+            },
+            || true,
+            |_| Vec::new(),
+        )
+        .unwrap();
+        assert_eq!(result["approved_count"], 1);
+        assert_eq!(result["approved"][0]["candidate_index"], 2);
+        let (loaded, _) = load_trusted(&paths).unwrap();
+        assert_eq!(loaded.mappings.get("1").unwrap().target_id, "4");
+        assert_eq!(remote.create_calls, 0);
+        assert_eq!(remote.add_calls, 0);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn invalid_candidate_selection_skips_without_saving() {
+        let root = env::temp_dir().join(format!("freefm-review-invalid-{}", now_seconds()));
+        let paths = Paths { root: root.clone() };
+        let mut remote = FakeRemote::restricted_with_candidate().restricted_with_many_candidates();
+        let result = review_with_selector(
+            &paths,
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            false,
+            true,
+            |_| None,
+            || true,
+            |_| Vec::new(),
+        )
+        .unwrap();
+        assert_eq!(result["approved_count"], 0);
+        assert_eq!(result["skipped_count"], 1);
+        assert!(!paths.trusted().exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn selected_candidate_restricted_during_reverification_is_not_saved() {
+        let root = env::temp_dir().join(format!("freefm-review-reverify-{}", now_seconds()));
+        let paths = Paths { root: root.clone() };
+        let mut remote = FakeRemote::restricted_with_candidate().restricted_with_many_candidates();
+        remote.reverify_restricted.insert("4".to_string());
+        let result = review_with_selector(
+            &paths,
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            false,
+            true,
+            |_| Some(1),
+            || true,
+            |_| Vec::new(),
+        )
+        .unwrap();
+        assert_eq!(result["approved_count"], 0);
+        assert_eq!(result["skipped_count"], 1);
+        assert!(!paths.trusted().exists());
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
