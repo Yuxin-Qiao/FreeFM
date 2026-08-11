@@ -49,7 +49,8 @@
 
 - +24h：2026-08-10 23:21:34（Asia/Shanghai）。
 - +7d：2026-08-16 23:21:34（Asia/Shanghai）。
-- +7d 全部门禁完成前，Hermes `freefm-hourly` 保持暂停，不建立其他周期 `sync`。
+- +7d 全部门禁完成前，Hermes 不建立任何周期 `sync`（当前 `hermes cron list` 为空；
+  closeout 脚本最后一步才创建 `freefm-sync`，每 6 小时、`--no-agent`）。
 - +7d 到达后可直接运行 `scripts/release-closeout.sh`（验证时间门槛、移除观察
   LaunchAgent、本地全门禁、main 干净、打 tag 并等待 Release workflow、更新并验证
   Homebrew tap、恢复 Hermes no-agent cron）；每步 fail-closed。
@@ -268,7 +269,9 @@ brew audit --strict --online Yuxin-Qiao/tap/freefm
 - [ ] OpenClaw isolated Gateway command job 再跑两次 `freefm sync --quiet`，确认无 Agent message、无 delivery、空输出且幂等。
 - [ ] Hermes `no_agent/script-only` 再跑两次，确认 run record 为 no-agent、空输出且幂等。
 - [ ] 发布 ClawHub `0.1.0` stable channel；确认安全扫描通过且安装内容包含 helper。
-- [ ] 最后解除 Hermes `freefm-hourly` 暂停；保留失败时的人工提示，不自动唤醒 LLM。
+- [ ] 最后运行 closeout 脚本第 8 步：安装 `automation/hermes/freefm-sync.sh` 到
+  `~/.hermes/scripts/` 并创建 Hermes `freefm-sync`（每 6 小时、`--no-agent`）；
+  保留失败时的人工提示，不自动唤醒 LLM。
 - [ ] 观察首个正式周期；成功时应为空输出，失败时立即再次暂停 job。
 
 通过标准：正常周期 0 LLM token、0 resident process、空输出、无重复追加。

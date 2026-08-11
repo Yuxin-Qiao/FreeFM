@@ -57,6 +57,10 @@ cargo test --all-targets --locked
 cargo clippy --all-targets --locked -- -D warnings
 cargo build --release --locked
 git diff --check
+for f in scripts/*.sh automation/hermes/*.sh automation/launchd/*.sh skills/freefm/scripts/*.sh; do
+  sh -n "$f"
+done
+scripts/package-workbuddy.sh target/freefm-workbuddy.zip
 if command -v gitleaks >/dev/null 2>&1; then
   gitleaks dir . --no-banner --redact
 fi
@@ -147,10 +151,13 @@ echo "[7/8] brew tap/install/test/audit 全部通过。"
 
 # 8. Un-pause the deterministic Hermes cron (no-agent, every 6h).
 if command -v hermes >/dev/null 2>&1; then
+  mkdir -p "$HOME/.hermes/scripts"
+  cp "$repo_dir/automation/hermes/freefm-sync.sh" "$HOME/.hermes/scripts/freefm-sync.sh"
+  chmod 700 "$HOME/.hermes/scripts/freefm-sync.sh"
   hermes cron create "0 */6 * * *" --name "$hermes_job" --script freefm-sync.sh --no-agent || true
   echo "[8/8] Hermes $hermes_job 已启用（0 */6 * * *，--no-agent）。"
 else
-  echo "[8/8] 未检测到 hermes CLI；请人工启用：hermes cron create \"0 */6 * * *\" --name $hermes_job --script freefm-sync.sh --no-agent"
+  echo "[8/8] 未检测到 hermes CLI；请人工把 automation/hermes/freefm-sync.sh 复制到 ~/.hermes/scripts/ 并启用：hermes cron create \"0 */6 * * *\" --name $hermes_job --script freefm-sync.sh --no-agent"
 fi
 
 echo
