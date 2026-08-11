@@ -103,7 +103,7 @@ MUSIC_U、session 和二维码 key。使用
 | `freefm auth` | 否 | 官方客户端扫码登录 |
 | `freefm preview` | 否 | 展示加入、候选和跳过 |
 | `freefm audit` | 否 | 复查已保存歌曲：still_free / became_restricted / unavailable / unknown |
-| `freefm review` | 仅本机 | 人工确认候选为 trusted 免费版本；绝不写远端 |
+| `freefm review` | 仅本机 | 从最多三个严格候选中人工确认一个 trusted 免费版本；绝不写远端 |
 | `freefm sync` | 只追加 | 加入严格验证的免费原曲 |
 | `freefm status` | 否 | 检查 session、账号与本地同步统计 |
 | `freefm doctor` | 否 | 检查权限、状态和接口结构 |

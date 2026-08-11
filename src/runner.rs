@@ -8,7 +8,7 @@ use crate::storage::{
     Paths, StateFile, SyncLock, TrustedStore, load_session, load_state, load_trusted, now_seconds,
 };
 use crate::sync::{require_login, require_ordinary_account, sync};
-use crate::trusted::{review, stdin_confirm, stdin_manage};
+use crate::trusted::{review_with_selector, stdin_choose_candidate, stdin_confirm, stdin_manage};
 use serde_json::{Value, json};
 use std::collections::HashSet;
 
@@ -117,13 +117,14 @@ pub fn run(cli: Cli) -> AppResult<Value> {
             let mut remote = Remote::new(new_client(Some(&session))?);
             let account = require_login(&mut remote)?;
             require_ordinary_account(&account)?;
-            review(
+            review_with_selector(
                 &paths,
                 &mut remote,
                 &account.uid,
                 &state,
                 state_corrupt_recovered,
                 cli.json,
+                stdin_choose_candidate,
                 stdin_confirm,
                 stdin_manage,
             )

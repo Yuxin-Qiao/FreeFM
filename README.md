@@ -105,7 +105,7 @@ CLI, never the TUI.
 | `freefm auth` | No | Official-client QR login |
 | `freefm preview` | No | Show additions, candidates, skips |
 | `freefm audit` | No | Re-check saved tracks: still_free / became_restricted / unavailable / unknown |
-| `freefm review` | Local only | Approve a candidate as a trusted free version; never writes remotely |
+| `freefm review` | Local only | Choose from up to three strict candidates and approve one; never writes remotely |
 | `freefm sync` | Append only | Add strictly verified free originals |
 | `freefm status` | No | Check session/account plus local sync metadata |
 | `freefm doctor` | No | Check permissions, state, and API shape |

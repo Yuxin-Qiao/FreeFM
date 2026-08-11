@@ -22,6 +22,18 @@ pub(crate) enum Action {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub(crate) struct Candidate {
+    pub(crate) id: String,
+    pub(crate) title: String,
+    pub(crate) artist: String,
+    pub(crate) duration_ms: Option<i64>,
+    pub(crate) duration_delta_ms: Option<i64>,
+    pub(crate) album: Option<String>,
+    pub(crate) version_markers: Vec<String>,
+    pub(crate) score: f32,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub(crate) struct Decision {
     pub(crate) original_id: String,
     pub(crate) original_title: String,
@@ -38,6 +50,7 @@ pub(crate) struct Decision {
     pub(crate) selected_version_markers: Vec<String>,
     pub(crate) trusted_mapping: bool,
     pub(crate) trusted_invalid: bool,
+    pub(crate) candidates: Vec<Candidate>,
     pub(crate) reason: String,
 }
 
@@ -111,6 +124,22 @@ pub(crate) fn select_playlist(
     Ok(only)
 }
 
+fn candidate_record(original: &Song, candidate: &Song, score: f32) -> Candidate {
+    Candidate {
+        id: candidate.id.clone(),
+        title: candidate.name.clone(),
+        artist: candidate.artists.join("、"),
+        duration_ms: candidate.duration_ms,
+        duration_delta_ms: match (original.duration_ms, candidate.duration_ms) {
+            (Some(left), Some(right)) => Some(right - left),
+            _ => None,
+        },
+        album: candidate.album.clone(),
+        version_markers: sorted_version_markers(candidate),
+        score,
+    }
+}
+
 pub(crate) fn build_plan<R: RemoteApi>(
     remote: &mut R,
     uid: &str,
@@ -159,6 +188,7 @@ pub(crate) fn build_plan<R: RemoteApi>(
         let original_probe = remote.playback_probe(&original.id)?;
         let original_availability = availability_from_fields(&original, Some(original_probe));
         let original_evidence = availability_evidence(&original, original_probe);
+        let mut candidates = Vec::new();
         let (action, selected, reason, trusted_mapping, trusted_invalid) = if original_availability
             == Availability::Free
         {
@@ -202,7 +232,7 @@ pub(crate) fn build_plan<R: RemoteApi>(
                     .map(|song| song.id.clone())
                     .collect::<Vec<_>>();
                 let searched_details = remote.details(&search_ids)?;
-                let mut best = None;
+                let mut valid_candidates = Vec::new();
                 for result in search_results {
                     let candidate = merge_song_metadata(&result, searched_details.get(&result.id));
                     let Some(score) = same_recording_score(&original, &candidate) else {
@@ -221,14 +251,32 @@ pub(crate) fn build_plan<R: RemoteApi>(
                     {
                         continue;
                     }
-                    if best
-                        .as_ref()
-                        .is_none_or(|(_, current_score): &(Song, f32)| score > *current_score)
-                    {
-                        best = Some((candidate, score));
-                    }
+                    valid_candidates.push((candidate, score));
                 }
-                if let Some((candidate, _score)) = best {
+                valid_candidates.sort_by(|(left, left_score), (right, right_score)| {
+                    right_score
+                        .total_cmp(left_score)
+                        .then_with(|| {
+                            let left_delta = left
+                                .duration_ms
+                                .zip(original.duration_ms)
+                                .map(|(candidate, source)| (candidate - source).abs())
+                                .unwrap_or(i64::MAX);
+                            let right_delta = right
+                                .duration_ms
+                                .zip(original.duration_ms)
+                                .map(|(candidate, source)| (candidate - source).abs())
+                                .unwrap_or(i64::MAX);
+                            left_delta.cmp(&right_delta)
+                        })
+                        .then_with(|| left.id.cmp(&right.id))
+                });
+                candidates = valid_candidates
+                    .iter()
+                    .take(3)
+                    .map(|(candidate, score)| candidate_record(&original, candidate, *score))
+                    .collect();
+                if let Some((candidate, _score)) = valid_candidates.into_iter().next() {
                     (
                         Action::CandidateOnly,
                         Some(candidate),
@@ -289,6 +337,7 @@ pub(crate) fn build_plan<R: RemoteApi>(
                 .unwrap_or_default(),
             trusted_mapping,
             trusted_invalid,
+            candidates,
             reason: if duplicate {
                 "已在 FreeFM · Auto 或本次计划中，保持幂等".to_string()
             } else {
