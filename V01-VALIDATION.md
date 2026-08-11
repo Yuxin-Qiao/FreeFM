@@ -196,19 +196,19 @@ Source: `~/.freefm-validation/`; only timestamps, counts, booleans, and
 failure types are recorded. No cookies, account identifiers, song IDs/titles,
 or URLs are stored in this document.
 
-Session (`session.jsonl`, n=49):
+Session (`session.jsonl`, n=50):
 
-- first sample 2026-08-09T15:21:34Z, last sample 2026-08-11T15:27:11Z;
-- 49/49 `ok`, 49/49 `authenticated`, `login_required` count = 0;
+- first sample 2026-08-09T15:21:34Z, last sample 2026-08-11T16:27:16Z;
+- 50/50 `ok`, 50/50 `authenticated`, `login_required` count = 0;
 - unique `account_vip_type` values = `[0]` (ordinary account confirmed on
   every sample);
 - failure types: none.
 
-Passive FM (`passive.jsonl`, n=51):
+Passive FM (`passive.jsonl`, n=52):
 
 - first sample 2026-08-09T14:28:33Z (two pre-LaunchAgent manual samples),
-  hourly sampling from 15:21:37Z, last sample 2026-08-11T15:27:16Z;
-- 51 unique salted batch hashes, 137 unique salted track hashes, zero
+  hourly sampling from 15:21:37Z, last sample 2026-08-11T16:27:19Z;
+- 52 unique salted batch hashes, 139 unique salted track hashes, zero
   failures; batches continue to contain new tracks;
 - HTTP requests per fetch: 11-17 (mode 15), consistent with one preview.
 
@@ -216,8 +216,8 @@ LaunchAgent `com.freefm.validation`:
 
 - loaded, hourly, last exit 0; script contains only `status` and `preview`
   invocations; keyword scan for sync/play/skip/trash/scrobble found none;
-- evidence size bounded: session.jsonl 8,428 B + passive.jsonl 26,377 B
-  (total ~34.8 KB after ~58 h of sampling).
+- evidence size bounded: session.jsonl 8,600 B + passive.jsonl 26,876 B
+  (total ~34.7 KB after ~59 h of sampling).
 
 Status: within the +7d observation window (gate 2026-08-16 23:21
 Asia/Shanghai). No sync or cron has been enabled.
