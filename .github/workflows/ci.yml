@@ -39,7 +39,9 @@ jobs:
             test -f "assets/platforms/$icon"
           done
           cmp automation/hermes/freefm-sync.sh skills/freefm/scripts/freefm-sync.sh
+          cmp automation/hermes/freefm-audit.sh skills/freefm/scripts/freefm-audit.sh
           sh -n skills/freefm/scripts/freefm-sync.sh
+          sh -n skills/freefm/scripts/freefm-audit.sh
           sh -n scripts/package-workbuddy.sh
           sh -n scripts/install.sh
           scripts/release-smoke-test.sh

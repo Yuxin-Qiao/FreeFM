@@ -14,6 +14,9 @@ Date: 2026-08-10 (Asia/Shanghai)
 - SHA-256:
   `22d15ee721a9555eae0896c39806ff85d54f984c97a4b7733320536f7d2403ba`.
 - cold `--version` execution: 0.01 seconds real time, 2,129,920 bytes maximum resident set size.
+- workspace refresh 2026-08-11: `cargo test --all-targets --locked` 45 lib + 4 TUI
+  passed (1 ignored child-process lock helper); fmt/clippy/`git diff --check` clean;
+  local release binary 1,887,472 bytes (final SHA recorded at the +7d closeout).
 
 All automated tests use the in-process fake protocol seam and redacted
 fixtures. They never contact NetEase. Coverage includes strict entitlement
@@ -82,9 +85,20 @@ The repository script `experiments/passive-fm-observe.sh` performs read-only
 sampling without playback, skip, trash, or scrobble calls. It deletes raw
 responses and stores only salted per-run hashes and aggregate counts.
 
-As of 2026-08-10 20:22 Asia/Shanghai (12:22 UTC), 24 observations over 21 hours 54 minutes
-produced 24 distinct 3-track batches and 72 salted track hashes, all 100% unique with zero duplicate batches and zero failure records.
-All 22 hourly session checks remained authenticated with explicit `vipType=0` (`client_calls=1`, `http_requests=1`).
+As of 2026-08-11 09:25 Asia/Shanghai (2026-08-11 01:25 UTC), 35 session checks
+over 34 hours recorded 37 distinct 3-track batches (111 track slots) and 104
+unique salted track hashes, with zero failure records and zero duplicate batch
+hashes. All 35 session checks remained authenticated with explicit
+`vipType=0` (`client_calls=1`, `http_requests=1`, `login_required=false`).
+
+The +24h gate (2026-08-10 23:21 Asia/Shanghai) is reached: passive Private FM
+sampling continues to produce fresh recommendation batches without playback,
+skip, trash, or scrobble calls, and the QR session remains valid across
+process restarts. The FM-queue experiment (two human runs, both
+`official_queue_advanced=n`) and the live acceptance chain
+(FUNCTIONAL-ACCEPTANCE.md, real account, 2026-08-11 00:09-00:51 CST) are
+recorded separately; the 7-day observation gate remains
+(2026-08-16 23:21:34 Asia/Shanghai).
 
 This confirms that passive polling causes NetEase to return fresh recommendation batches without requiring playback, skip, or scrobble actions. The LaunchAgent `com.freefm.validation` continues running toward the 7-day observation gate (2026-08-16 23:21:34 Asia/Shanghai).
 

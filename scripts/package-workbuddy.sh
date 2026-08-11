@@ -16,7 +16,9 @@ trap 'rm -rf "$stage"' EXIT HUP INT TERM
 mkdir -p "$stage/freefm/scripts" "$(dirname -- "$output")"
 cp "$repo/skills/freefm/SKILL.md" "$stage/freefm/SKILL.md"
 cp "$repo/skills/freefm/scripts/freefm-sync.sh" "$stage/freefm/scripts/freefm-sync.sh"
+cp "$repo/skills/freefm/scripts/freefm-audit.sh" "$stage/freefm/scripts/freefm-audit.sh"
 chmod 755 "$stage/freefm/scripts/freefm-sync.sh"
+chmod 755 "$stage/freefm/scripts/freefm-audit.sh"
 
 (cd "$stage" && zip -q -r "$output" freefm)
 printf '%s\n' "$output"

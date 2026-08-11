@@ -6,6 +6,8 @@ Codex 不是无模型定时器：`codex exec` 和桌面端循环自动化都会�
 零 token 的周期同步直接执行二进制：
 
 - 系统 cron/launchd 调用 `freefm sync --quiet`（与 OpenClaw/Hermes 相同原则）；
+- 再配一个低频 `freefm audit --quiet` 任务（如每日一次）：健康时静默，exit 3
+  表示有歌曲需要关注，同样零 token、零远端写入；
 - 或确定性沙箱运行器：`codex sandbox -- freefm sync --quiet`（需要允许网络和
   `~/.freefm` 写入的 permissions profile，先用 `status --json` 验证同一 profile）。
 

@@ -7,7 +7,7 @@ use crate::protocol::{FM_ENDPOINT, PLAYLIST_ADD_ENDPOINT, PLAYLIST_CREATE_ENDPOI
 use crate::render::is_login_error;
 use crate::storage::{Paths, SyncLock, load_session, load_state, load_trusted};
 use crate::sync::{require_login, require_ordinary_account, sync};
-use crate::trusted::{review, stdin_confirm};
+use crate::trusted::{review, stdin_confirm, stdin_manage};
 use serde_json::{Value, json};
 
 pub fn run(cli: Cli) -> AppResult<Value> {
@@ -93,6 +93,7 @@ pub fn run(cli: Cli) -> AppResult<Value> {
                 state_corrupt_recovered,
                 cli.json,
                 stdin_confirm,
+                stdin_manage,
             )
         }
         "doctor" => {

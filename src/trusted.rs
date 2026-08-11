@@ -69,10 +69,46 @@ pub(crate) fn stdin_confirm() -> bool {
         .is_ok_and(|_| matches!(line.trim().to_ascii_lowercase().as_str(), "y" | "yes"))
 }
 
+pub(crate) fn stdin_manage(existing: &[(String, String)]) -> Vec<String> {
+    if existing.is_empty() {
+        return Vec::new();
+    }
+    println!("当前 trusted mappings（{} 条）：", existing.len());
+    for (index, (original_id, target_id)) in existing.iter().enumerate() {
+        println!("  {index}: {original_id} -> {target_id}");
+    }
+    let mut remove = Vec::new();
+    loop {
+        println!("输入要移除的条目编号（多个用空格分隔），留空结束：");
+        let _ = io::stdout().flush();
+        let mut line = String::new();
+        if io::stdin().read_line(&mut line).is_err() {
+            break;
+        }
+        let line = line.trim();
+        if line.is_empty() {
+            break;
+        }
+        for part in line.split_whitespace() {
+            if let Ok(index) = part.parse::<usize>() {
+                if let Some((original_id, _)) = existing.get(index) {
+                    remove.push(original_id.clone());
+                }
+            }
+        }
+    }
+    remove
+}
+
 /// Interactive review: shows high-similarity free candidates for restricted
 /// originals and, only after explicit user confirmation, persists a local
 /// trusted mapping. Writes nothing remote; the only write is `trusted.json`.
-pub(crate) fn review<R: RemoteApi, F: FnMut() -> bool>(
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn review<
+    R: RemoteApi,
+    F: FnMut() -> bool,
+    M: FnMut(&[(String, String)]) -> Vec<String>,
+>(
     paths: &Paths,
     remote: &mut R,
     uid: &str,
@@ -80,6 +116,7 @@ pub(crate) fn review<R: RemoteApi, F: FnMut() -> bool>(
     state_corrupt_recovered: bool,
     json: bool,
     mut confirm: F,
+    mut manage: M,
 ) -> AppResult<Value> {
     let (mut trusted, trusted_corrupt_recovered) = load_trusted(paths)?;
     let report = build_plan(
@@ -156,15 +193,29 @@ pub(crate) fn review<R: RemoteApi, F: FnMut() -> bool>(
             "target_title": prompt.candidate_title
         }));
     }
+    let existing = trusted
+        .mappings
+        .iter()
+        .map(|(original, mapping)| (original.clone(), mapping.target_id.clone()))
+        .collect::<Vec<_>>();
+    let mut removed = Vec::new();
+    for original_id in manage(&existing) {
+        if trusted.mappings.remove(&original_id).is_some() {
+            removed.push(original_id);
+            save_trusted(paths, &trusted)?;
+        }
+    }
     Ok(json!({
         "ok": true,
         "command": "review",
         "approved": approved,
         "skipped": skipped,
         "invalid_mappings": invalid,
+        "removed": removed,
         "approved_count": approved.len(),
         "skipped_count": skipped.len(),
         "invalid_count": invalid.len(),
+        "removed_count": removed.len(),
         "trusted_count": trusted.mappings.len(),
         "trusted_corrupt_recovered": trusted_corrupt_recovered,
         "state_corrupt_recovered": state_corrupt_recovered,

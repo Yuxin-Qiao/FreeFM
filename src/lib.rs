@@ -1280,6 +1280,7 @@ mod tests {
             false,
             true,
             || true,
+            |_| Vec::new(),
         )
         .unwrap();
         assert_eq!(result["approved_count"], 1);
@@ -1301,11 +1302,65 @@ mod tests {
             false,
             true,
             || false,
+            |_| Vec::new(),
         )
         .unwrap();
         assert_eq!(result["approved_count"], 0);
         assert_eq!(result["skipped_count"], 1);
         assert!(!paths.trusted().exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn review_remove_deletes_only_requested_mapping() {
+        let root = env::temp_dir().join(format!("freefm-review-rm-{}", now_seconds()));
+        let paths = Paths { root: root.clone() };
+        let mut store = TrustedStore::default();
+        store.approve("1", "2");
+        store.approve("5", "6");
+        save_trusted(&paths, &store).unwrap();
+        let mut remote = FakeRemote::restricted_with_candidate();
+        let result = review(
+            &paths,
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            false,
+            true,
+            || false,
+            |_| vec!["1".to_string()],
+        )
+        .unwrap();
+        assert_eq!(result["removed_count"], 1);
+        let (loaded, _) = load_trusted(&paths).unwrap();
+        assert!(!loaded.mappings.contains_key("1"));
+        assert_eq!(loaded.mappings.get("5").unwrap().target_id, "6");
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn review_replaces_stale_mapping_with_new_confirmation() {
+        let root = env::temp_dir().join(format!("freefm-review-replace-{}", now_seconds()));
+        let paths = Paths { root: root.clone() };
+        let mut store = TrustedStore::default();
+        store.approve("1", "9");
+        save_trusted(&paths, &store).unwrap();
+        let mut remote = FakeRemote::restricted_with_candidate();
+        let result = review(
+            &paths,
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            false,
+            true,
+            || true,
+            |_| Vec::new(),
+        )
+        .unwrap();
+        assert_eq!(result["approved_count"], 1);
+        let (loaded, _) = load_trusted(&paths).unwrap();
+        assert_eq!(loaded.mappings.len(), 1);
+        assert_eq!(loaded.mappings.get("1").unwrap().target_id, "2");
         let _ = fs::remove_dir_all(root);
     }
 
