@@ -3,6 +3,12 @@ name: AI Review
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to verify
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -14,29 +20,59 @@ concurrency:
 
 jobs:
   ai-review:
-    if: github.event.pull_request.draft == false
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     env:
       REPOSITORY: ${{ github.repository }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.base.sha || github.sha }}
           fetch-depth: 1
           persist-credentials: false
+
+      - name: Resolve pull request metadata
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}" > "$RUNNER_TEMP/pr.json"
+          python3 - "$RUNNER_TEMP/pr.json" "$GITHUB_OUTPUT" <<'PY'
+          import json
+          import sys
+          import uuid
+
+          with open(sys.argv[1], encoding="utf-8") as handle:
+              pull_request = json.load(handle)
+          output_path = sys.argv[2]
+          delimiter = f"ghadelim_{uuid.uuid4().hex}"
+          values = {
+              "number": str(pull_request["number"]),
+              "base_sha": pull_request["base"]["sha"],
+              "head_sha": pull_request["head"]["sha"],
+              "title": pull_request.get("title") or "",
+              "body": pull_request.get("body") or "",
+          }
+          with open(output_path, "a", encoding="utf-8") as handle:
+              for key, value in values.items():
+                  handle.write(f"{key}<<{delimiter}\n{value}\n{delimiter}\n")
+          PY
 
       - name: Run AI verification
         id: ai
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          BASE_SHA: ${{ steps.pr.outputs.base_sha }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          PR_TITLE: ${{ steps.pr.outputs.title }}
+          PR_BODY: ${{ steps.pr.outputs.body }}
           AI_REVIEW_API_KEY: ${{ secrets.AI_REVIEW_API_KEY }}
           AI_REVIEW_ENDPOINT: ${{ secrets.AI_REVIEW_ENDPOINT }}
           AI_REVIEW_MODEL: ${{ secrets.AI_REVIEW_MODEL }}
