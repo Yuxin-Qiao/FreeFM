@@ -3,6 +3,7 @@
 更新：2026-08-10（Asia/Shanghai）
 适用仓库：`Yuxin-Qiao/FreeFM`
 目标：补齐长期验证、平台实机与供应链门禁，发布可复核的 `v0.1.0`，最后再开启无人值守同步。
+后续所有版本遵循 `RELEASING.md` 的版本发布规则；`v0.1.0` 仍按本计划执行。
 
 ## 0. 当前基线
 
@@ -95,12 +96,15 @@
 
 负责人：Validation owner。
 最早执行时间：2026-08-10 23:21:34（Asia/Shanghai）。
+状态：已完成（commit 80660d8 记录 +24h 结论；2026-08-11 09:25 CST 复核：35 次
+session 全部 authenticated 且 `vipType=0`，37 批被动 FM、104 个唯一盐化 track
+hash，零失败；LaunchAgent 仍在运行观察）。
 
-- [ ] 读取 `~/.freefm-validation/started-at`、`session.jsonl`、`passive.jsonl` 和可选 `failures.jsonl`。
-- [ ] 只聚合首末时间、样本数、成功数、authenticated 数、`vipType=0` 数、盐化 batch/track 总数与去重数、HTTP 请求数范围和失败类型。
-- [ ] 确认 LaunchAgent 安装脚本和实际运行脚本只包含 `status` 与 `preview`。
-- [ ] 在 `V01-VALIDATION.md` 记录 +24h 结论，并明确“读取 FM 可能由服务端视为消费批次”仍未知。
-- [ ] 不停止 LaunchAgent；继续观察到 +7d。
+- [x] 读取 `~/.freefm-validation/started-at`、`session.jsonl`、`passive.jsonl` 和可选 `failures.jsonl`。
+- [x] 只聚合首末时间、样本数、成功数、authenticated 数、`vipType=0` 数、盐化 batch/track 总数与去重数、HTTP 请求数范围和失败类型。
+- [x] 确认 LaunchAgent 安装脚本和实际运行脚本只包含 `status` 与 `preview`。
+- [x] 在 `V01-VALIDATION.md` 记录 +24h 结论，并明确“读取 FM 可能由服务端视为消费批次”仍未知。
+- [x] 不停止 LaunchAgent；继续观察到 +7d。
 
 通过标准：至少覆盖完整 24 小时；无写接口；后续批次仍有新的盐化 track，或如实记录停滞限制。
 失败处理：出现认证失败、异常字段或证据文件结构变化时，记录稳定失败类型，暂停一切同步，不删除失败证据。

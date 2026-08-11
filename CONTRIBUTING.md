@@ -30,3 +30,10 @@ or raw request/response logs. New fixtures must follow
 Changes that unlock restricted content, obtain restricted audio, replace
 playback URLs, download audio, or silently substitute a different recording
 are out of scope.
+
+## Releasing
+
+FreeFM releases are deliberately restrained and stability-first. All release
+policy, versioning rules, observation windows, gates, and No-Go conditions
+live in [RELEASING.md](RELEASING.md). Every release requires the full gate
+suite and a human Go/No-Go; there are no hotfix exemptions.

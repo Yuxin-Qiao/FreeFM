@@ -59,6 +59,14 @@ Run `scripts/pin-actions.sh` on a machine with network access, commit the
 rewritten workflows, and keep the MSRV job (Cargo.toml `rust-version`) in sync
 with the minimum Rust version CI actually tests.
 
+## Releases
+
+Version releases follow the restrained, stability-first policy in
+`RELEASING.md`: SemVer, independent `release: vX.Y.Z` commits, read-only
+observation windows (patch 24h; minor/major 7d), full gates for every release,
+human Go/No-Go, and fail-closed No-Go conditions. No scheduled or automatic
+releases.
+
 ## Scope discipline
 
 Prefer measured changes over speculative protocol rewrites. Record live claims
