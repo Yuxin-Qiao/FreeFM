@@ -114,6 +114,13 @@ MUSIC_U、session 和二维码 key。使用
 `--json` 提供稳定机器输出，`--quiet` 成功时静默；`--data-dir PATH` 或
 `FREEFM_HOME` 可隔离状态目录。
 
+### JSON Contract v1
+
+机器可读成功结果包含 `schema_version: 1`、`ok: true` 和 `command`；错误结果
+包含同一 schema 版本及稳定的 `error.kind`。既有字段不会删除，新增字段允许出现，
+客户端应忽略未知字段。sync 保留兼容字段 `would_add_ids`，只有远端复读确认后才
+填充 `added_ids` / `added_count`。
+
 ## Agent 平台
 
 产品永远是 Rust 二进制；Skill 只负责安装和确定性调用。正常定时同步

@@ -62,6 +62,7 @@ pub(crate) fn sync<R: RemoteApi>(
         ids_to_add.truncate(limit);
     }
     report.would_add_ids = ids_to_add.clone();
+    let mut added_ids = Vec::new();
     if !ids_to_add.is_empty() {
         remote.add_tracks(&playlist_id, &ids_to_add)?;
         let after = remote.playlist_tracks(&playlist_id)?;
@@ -69,6 +70,7 @@ pub(crate) fn sync<R: RemoteApi>(
         if !verified {
             return Err(AppError::Remote("歌单写入后复读未找到全部歌曲".to_string()));
         }
+        added_ids = ids_to_add.clone();
         for id in &ids_to_add {
             if !state.added_song_ids.contains(id) {
                 state.added_song_ids.push(id.clone());
@@ -85,5 +87,7 @@ pub(crate) fn sync<R: RemoteApi>(
     report.would_create_playlist = false;
     report.client_calls = remote.client_calls();
     report.http_requests = remote.http_requests();
+    report.added_count = added_ids.len();
+    report.added_ids = added_ids;
     Ok(report)
 }

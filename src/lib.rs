@@ -44,7 +44,7 @@ mod tests {
     use crate::render::{
         audit_human, format_duration_ago, preview_human, rendered_output, status_human,
     };
-    use crate::runner::operational_metadata;
+    use crate::runner::{operational_metadata, success_envelope};
     use crate::storage::{
         SessionFile, StateFile, StoredCookie, SyncLock, TrustedMapping, TrustedStore, load_session,
         load_state, load_trusted, now_seconds, restrict_dir, save_trusted, write_private_json,
@@ -625,6 +625,7 @@ mod tests {
 
     #[test]
     fn timeout_and_login_errors_are_safe_categories() {
+        assert_eq!(json_error(&AppError::Timeout)["schema_version"], 1);
         assert_eq!(json_error(&AppError::Timeout)["error"]["kind"], "timeout");
         assert_eq!(
             json_error(&AppError::LoginRequired)["error"]["kind"],
@@ -646,6 +647,41 @@ mod tests {
         ));
         let secret = json_error(&AppError::Remote("request failed".to_string())).to_string();
         assert!(!secret.contains("MUSIC_U"));
+    }
+
+    #[test]
+    fn json_contract_v1_envelopes_successful_commands_and_preserves_fields() {
+        for command in [
+            "auth", "status", "preview", "sync", "audit", "review", "doctor",
+        ] {
+            let value = success_envelope(command, json!({"ok": true}));
+            assert_eq!(value["schema_version"], 1);
+            assert_eq!(value["ok"], true);
+            assert_eq!(value["command"], command);
+        }
+        let preview = success_envelope(
+            "preview",
+            json!({
+                "private_fm_count": 2,
+                "would_add_ids": ["1"],
+                "max_additions": 1,
+                "eligible_add_count": 2,
+                "deferred_count": 1
+            }),
+        );
+        assert_eq!(preview["would_add_ids"], json!(["1"]));
+        assert_eq!(preview["deferred_count"], 1);
+        let audit = success_envelope(
+            "audit",
+            json!({"summary":{"still_free":1,"became_restricted":0,"unavailable":0,"unknown":0},"needs_attention":false}),
+        );
+        assert_eq!(audit["summary"]["still_free"], 1);
+        let sync = success_envelope(
+            "sync",
+            json!({"would_add_ids":[],"added_ids":["1"],"added_count":1}),
+        );
+        assert_eq!(sync["added_ids"], json!(["1"]));
+        assert_eq!(sync["added_count"], 1);
     }
 
     #[test]
@@ -1028,7 +1064,9 @@ mod tests {
             recovered,
         )
         .unwrap();
-        sync(&paths, report, "u", &mut remote).unwrap();
+        let first_sync = sync(&paths, report, "u", &mut remote).unwrap();
+        assert_eq!(first_sync.added_ids, vec!["1".to_string()]);
+        assert_eq!(first_sync.added_count, 1);
         let (state, recovered) = load_state(&paths).unwrap();
         assert!(!recovered);
         let report = build_plan(
@@ -1041,7 +1079,9 @@ mod tests {
         )
         .unwrap();
         assert!(report.would_add_ids.is_empty());
-        sync(&paths, report, "u", &mut remote).unwrap();
+        let second_sync = sync(&paths, report, "u", &mut remote).unwrap();
+        assert!(second_sync.added_ids.is_empty());
+        assert_eq!(second_sync.added_count, 0);
         assert_eq!(remote.create_calls, 1);
         assert_eq!(remote.add_calls, 1);
         let _ = fs::remove_dir_all(root);

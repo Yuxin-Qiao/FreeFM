@@ -116,6 +116,14 @@ CLI, never the TUI.
 `--json` for stable machine output, `--quiet` for silent success; `--data-dir
 PATH` or `FREEFM_HOME` isolates the state root.
 
+### JSON Contract v1
+
+Machine-readable success responses include `schema_version: 1`, `ok: true`, and
+`command`. Errors include the same schema version plus a stable `error.kind`.
+Existing fields are preserved; additive fields may appear, and clients should
+ignore unknown fields. Sync keeps `would_add_ids` for compatibility and adds
+`added_ids` / `added_count` only after remote reread verification.
+
 ## Agent platforms
 
 The Rust binary is the product; platform integrations only install and invoke

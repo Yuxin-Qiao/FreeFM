@@ -14,7 +14,7 @@ pub fn json_error(error: &AppError) -> Value {
         AppError::StateCorrupt(_) => ("state_corrupt", error.to_string()),
         _ => ("error", error.to_string()),
     };
-    json!({"ok": false, "error": {"kind": kind, "message": message}})
+    json!({"schema_version": 1, "ok": false, "error": {"kind": kind, "message": message}})
 }
 
 pub(crate) fn rendered_output(
