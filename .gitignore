@@ -1,5 +1,7 @@
 /target/
 **/target/
+__pycache__/
+*.pyc
 /.freefm/
 .DS_Store
 *.session.json
