@@ -4,7 +4,6 @@ use crate::cli::{Cli, usage};
 use crate::error::{AppError, AppResult};
 use crate::plan::{account_uid, account_vip_type, build_plan};
 use crate::protocol::{FM_ENDPOINT, PLAYLIST_ADD_ENDPOINT, PLAYLIST_CREATE_ENDPOINT, Remote};
-use crate::render::is_login_error;
 use crate::storage::{Paths, SyncLock, load_session, load_state, load_trusted};
 use crate::sync::{require_login, require_ordinary_account, sync};
 use crate::trusted::{review, stdin_confirm, stdin_manage};
@@ -30,7 +29,7 @@ pub fn run(cli: Cli) -> AppResult<Value> {
                     "client_calls": remote.client_calls,
                     "http_requests": remote.http_requests
                 })),
-                Err(error) if is_login_error(&error) => Ok(json!({
+                Err(AppError::LoginRequired) => Ok(json!({
                     "ok": true,
                     "authenticated": false,
                     "session_present": true,
@@ -109,7 +108,7 @@ pub fn run(cli: Cli) -> AppResult<Value> {
                         value["client_calls"] = json!(remote.client_calls);
                         value["http_requests"] = json!(remote.http_requests);
                     }
-                    Err(error) if is_login_error(&error) => {
+                    Err(AppError::LoginRequired) => {
                         value["authenticated"] = json!(false);
                         value["login_required"] = json!(true);
                         value["client_calls"] = json!(remote.client_calls);

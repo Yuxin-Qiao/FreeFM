@@ -52,22 +52,7 @@ impl Remote {
             )));
         }
         if matches!(response.code, Some(code) if code != 200) {
-            return match remote_code_error(response.code) {
-                AppError::LoginRequired => {
-                    let safe_detail = response
-                        .body
-                        .get("msg")
-                        .and_then(Value::as_str)
-                        .or_else(|| response.body.get("message").and_then(Value::as_str))
-                        .unwrap_or("无公开错误说明");
-                    Err(AppError::Remote(format!(
-                        "{endpoint}: 登录类响应代码 {}（{}）",
-                        response.code.unwrap_or_default(),
-                        safe_detail
-                    )))
-                }
-                error => Err(error),
-            };
+            return Err(remote_code_error(response.code));
         }
         if response.body.is_null() {
             return Err(AppError::ApiIncompatible(format!(

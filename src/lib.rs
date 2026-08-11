@@ -39,8 +39,9 @@ mod tests {
     use crate::plan::{Action, account_uid, build_plan, select_playlist};
     use crate::protocol::{
         PLAYLIST_NAME, RemoteApi, playlist_detail_extra_requests, playlist_track_ids,
+        remote_code_error,
     };
-    use crate::render::{audit_human, is_login_error, preview_human, rendered_output};
+    use crate::render::{audit_human, preview_human, rendered_output};
     use crate::storage::{
         SessionFile, StateFile, StoredCookie, SyncLock, TrustedStore, load_session, load_state,
         load_trusted, now_seconds, restrict_dir, save_trusted, write_private_json,
@@ -578,12 +579,20 @@ mod tests {
             json_error(&AppError::LoginRequired)["error"]["kind"],
             "login_required"
         );
-        assert!(is_login_error(&AppError::Remote(
-            "login_status: 登录类响应代码 301".to_string()
-        )));
-        assert!(!is_login_error(&AppError::ApiIncompatible(
-            "状态字段变化".to_string()
-        )));
+        for code in [301, 401, 403] {
+            assert!(matches!(
+                remote_code_error(Some(code)),
+                AppError::LoginRequired
+            ));
+        }
+        assert!(matches!(
+            remote_code_error(Some(500)),
+            AppError::Remote(message) if message == "返回代码 500"
+        ));
+        assert!(matches!(
+            remote_code_error(None),
+            AppError::ApiIncompatible(message) if message == "响应缺少 code"
+        ));
         let secret = json_error(&AppError::Remote("request failed".to_string())).to_string();
         assert!(!secret.contains("MUSIC_U"));
     }
