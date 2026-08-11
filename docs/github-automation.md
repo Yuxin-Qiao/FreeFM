@@ -58,8 +58,9 @@ scans, or human review.
    `AI_REVIEW_MODEL` configured. The workflow treats endpoint failure as
    fail-open and reports the skip; it never prints the key.
 2. Keep the active `AI Review gate` Ruleset targeted at `main`, require the
-   checks above, stale-check strictness, and at least one human approval when a
-   second maintainer is available.
+   checks above, strict up-to-date branches, and at least one independent human
+   approval (`required_approving_review_count: 1`). Stale approvals must be
+   dismissed on push and all review threads must be resolved before merge.
 3. Configure required reviewers for the `release` environment in GitHub
    Settings so a tag cannot publish without the documented human Go/No-Go.
 4. Install the CodeRabbit GitHub App for `Yuxin-Qiao/FreeFM`. The committed
