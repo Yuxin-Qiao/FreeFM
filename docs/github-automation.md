@@ -24,6 +24,14 @@ Contributor PR
   It intentionally does not execute fork PR code with `security-events: write`.
 - `Dependabot`: weekly Cargo and GitHub Actions updates. Patch/minor updates are
   grouped; major updates remain explicit PRs.
+- `Codecov`: the CI coverage job produces an LCOV report with the real Rust test
+  suite and uploads it as an informational quality signal. It is not a merge
+  authority and has no invented coverage threshold.
+- `CodeRabbit`: repository-side review policy for non-draft PRs. It focuses on
+  correctness, regressions, security, API compatibility, lifecycles, and tests;
+  it does not request changes or replace deterministic CI and human review. The
+  existing AI verifier remains the acceptance/security assistant; CodeRabbit is
+  advisory code review, so neither AI tool is merge authority.
 - `Release`: tag-driven native artifacts, WorkBuddy package, SBOM, attestations,
   security gates, and a protected `release` environment.
 
@@ -54,16 +62,22 @@ scans, or human review.
    second maintainer is available.
 3. Configure required reviewers for the `release` environment in GitHub
    Settings so a tag cannot publish without the documented human Go/No-Go.
-4. CodeQL alerts and Dependabot security/update PRs are GitHub-native and need
+4. Install the CodeRabbit GitHub App for `Yuxin-Qiao/FreeFM`. The committed
+   `.coderabbit.yaml` is the repository-side policy; the app is still an
+   external installation.
+5. Activate `Yuxin-Qiao/FreeFM` in Codecov. Add a `CODECOV_TOKEN` repository
+   secret if Codecov requires authentication for protected `main` uploads;
+   fork PRs must never receive that secret.
+6. CodeQL alerts and Dependabot security/update PRs are GitHub-native and need
    no third-party SaaS installation.
 
 ## Intentionally not added
 
-- CodeRabbit, Qodo, Copilot review, and other AI reviewers: the repository
-  already has one working AI reviewer; adding another would create duplicate
-  comments and competing review semantics.
-- Codecov/coverage: the project has no established coverage generator or
-  baseline, so no misleading coverage gate is added.
+- Renovate: Dependabot already covers the only real ecosystems here (Cargo and
+  GitHub Actions), so adding a second dependency bot would duplicate PRs.
+- Release Please/Changesets: the existing tag-driven release workflow and
+  `RELEASING.md` require an explicit human Go/No-Go and prohibit automatic
+  releases; adding an automated release PR bot would violate that policy.
 - stale, backport, labeler, merge queue, Mergify, Probot, self-hosted services,
   and databases: the repository has one open issue, few branches, and no
   maintained release branches or contention that justifies them.
@@ -75,5 +89,7 @@ scans, or human review.
   are untrusted strings passed to the verifier, never shell source.
 - Release is tag-driven, uses least-privilege job permissions, and publishes
   only after security and smoke gates.
+- Codecov and CodeRabbit are advisory integrations. Their tokens and app
+  permissions must never be made available to `pull_request` jobs from forks.
 - Scheduled FreeFM synchronization remains `freefm sync --quiet` with zero LLM
   calls; the AI workflow exists only for GitHub PR review.

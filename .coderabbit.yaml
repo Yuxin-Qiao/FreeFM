@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+early_access: false
+
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  review_details: false
+  poem: false
+  review_status: true
+  path_filters:
+    - "!Cargo.lock"
+    - "!target/**"
+    - "!assets/**"
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 5
+  path_instructions:
+    - path: "src/**"
+      instructions: |
+        Review correctness, regression risk, CLI/TUI behavior, error propagation,
+        resource and session lifecycles, and the FreeFM invariants in AGENTS.md.
+        Flag credential exposure, restricted-audio bypasses, playlist mutation
+        violations, and missing focused regression tests. Ignore style-only nits.
+    - path: "scripts/**"
+      instructions: |
+        Check shell quoting, strict-mode behavior, temporary-file cleanup,
+        cross-platform macOS/Linux behavior, command injection, credential and
+        API-response redaction, and whether tests cover failure paths. Ignore
+        formatting-only comments.
+    - path: "scripts/tests/**"
+      instructions: |
+        Check that tests assert observable behavior, cover error and boundary
+        cases, avoid live services and credentials, and fail for regressions
+        rather than merely exercising lines.
+    - path: ".github/**"
+      instructions: |
+        Treat fork PRs as untrusted. Check event choice, token permissions,
+        secret exposure, trusted-base boundaries, persist-credentials: false,
+        immutable Action SHAs, timeouts, concurrency, artifact trust, and
+        whether a workflow can publish or mutate repository state unexpectedly.
+        Do not request style-only changes.
+    - path: "Cargo.toml"
+      instructions: |
+        Check MSRV, dependency feature changes, public CLI/API compatibility,
+        and whether dependency changes have focused tests and lockfile updates.
