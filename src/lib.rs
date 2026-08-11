@@ -21,7 +21,7 @@ mod trusted;
 
 pub use cli::Cli;
 pub use error::AppError;
-pub use render::{audit_human, emit, json_error, preview_human};
+pub use render::{audit_human, emit, json_error, preview_human, status_human};
 pub use runner::run;
 pub use storage::Paths;
 
@@ -41,10 +41,13 @@ mod tests {
         PLAYLIST_NAME, RemoteApi, playlist_detail_extra_requests, playlist_track_ids,
         remote_code_error,
     };
-    use crate::render::{audit_human, preview_human, rendered_output};
+    use crate::render::{
+        audit_human, format_duration_ago, preview_human, rendered_output, status_human,
+    };
+    use crate::runner::operational_metadata;
     use crate::storage::{
-        SessionFile, StateFile, StoredCookie, SyncLock, TrustedStore, load_session, load_state,
-        load_trusted, now_seconds, restrict_dir, save_trusted, write_private_json,
+        SessionFile, StateFile, StoredCookie, SyncLock, TrustedMapping, TrustedStore, load_session,
+        load_state, load_trusted, now_seconds, restrict_dir, save_trusted, write_private_json,
     };
     use crate::sync::{AccountContext, require_login, require_ordinary_account, sync};
     use crate::trusted::review;
@@ -727,6 +730,65 @@ mod tests {
         assert!(output.contains("不可用歌 — 丙"));
         assert!(output.contains("未知歌 — 丁"));
         assert!(!output.contains("健康歌"));
+    }
+
+    #[test]
+    fn operational_status_is_aggregate_only_and_saturates_clock_age() {
+        let state = StateFile {
+            playlist_id: Some("playlist-secret".to_string()),
+            last_sync_at: Some(100),
+            added_song_ids: vec![
+                "song-a".to_string(),
+                "song-a".to_string(),
+                "song-b".to_string(),
+            ],
+        };
+        let trusted = TrustedStore {
+            mappings: HashMap::from([
+                (
+                    "original-a".to_string(),
+                    TrustedMapping {
+                        target_id: "target-a".to_string(),
+                        approved_at: 90,
+                    },
+                ),
+                (
+                    "original-b".to_string(),
+                    TrustedMapping {
+                        target_id: "target-b".to_string(),
+                        approved_at: 91,
+                    },
+                ),
+            ]),
+        };
+        let value = operational_metadata(&state, &trusted, true, false, 50);
+        assert_eq!(value["last_sync_at"], 100);
+        assert_eq!(value["last_sync_age_seconds"], 0);
+        assert_eq!(value["managed_track_count"], 2);
+        assert_eq!(value["trusted_mapping_count"], 2);
+        assert_eq!(value["state_corrupt_recovered"], true);
+        assert_eq!(value["trusted_corrupt_recovered"], false);
+        let human = status_human(&json!({
+            "authenticated": true,
+            "last_sync_age_seconds": 0,
+            "managed_track_count": 2,
+            "trusted_mapping_count": 2,
+            "state_corrupt_recovered": true,
+            "trusted_corrupt_recovered": false
+        }));
+        assert!(human.contains("发现损坏"));
+        assert!(!human.contains("song-a"));
+        assert!(!human.contains("playlist-secret"));
+    }
+
+    #[test]
+    fn duration_formatter_has_stable_boundaries() {
+        assert_eq!(format_duration_ago(45), "45 秒前");
+        assert_eq!(format_duration_ago(60), "1 分钟前");
+        assert_eq!(format_duration_ago(125), "2 分钟前");
+        assert_eq!(format_duration_ago(3600), "1 小时前");
+        assert_eq!(format_duration_ago(8040), "2 小时 14 分钟前");
+        assert_eq!(format_duration_ago(3 * 86_400 + 2 * 3_600), "3 天 2 小时前");
     }
 
     #[test]

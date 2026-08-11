@@ -206,3 +206,53 @@ pub fn audit_human(value: &Value) -> String {
     }
     output.trim_end().to_string()
 }
+
+pub fn format_duration_ago(seconds: u64) -> String {
+    if seconds < 60 {
+        return format!("{seconds} 秒前");
+    }
+    let minutes = seconds / 60;
+    if minutes < 60 {
+        return format!("{minutes} 分钟前");
+    }
+    let hours = minutes / 60;
+    if hours < 24 {
+        let remaining_minutes = minutes % 60;
+        return if remaining_minutes == 0 {
+            format!("{hours} 小时前")
+        } else {
+            format!("{hours} 小时 {remaining_minutes} 分钟前")
+        };
+    }
+    let days = hours / 24;
+    let remaining_hours = hours % 24;
+    if remaining_hours == 0 {
+        format!("{days} 天前")
+    } else {
+        format!("{days} 天 {remaining_hours} 小时前")
+    }
+}
+
+pub fn status_human(value: &Value) -> String {
+    let login = if value["authenticated"] == true {
+        "已登录，会话可用。"
+    } else {
+        "未登录或会话已失效。"
+    };
+    let last_sync = value["last_sync_age_seconds"]
+        .as_u64()
+        .map(format_duration_ago)
+        .unwrap_or_else(|| "暂无记录".to_string());
+    let managed = value["managed_track_count"].as_u64().unwrap_or(0);
+    let trusted = value["trusted_mapping_count"].as_u64().unwrap_or(0);
+    let state_ok =
+        value["state_corrupt_recovered"] != true && value["trusted_corrupt_recovered"] != true;
+    let local_state = if state_ok {
+        "正常"
+    } else {
+        "发现损坏，已按安全默认处理"
+    };
+    format!(
+        "{login}\n上次成功同步：{last_sync}\nFreeFM 已记录管理：{managed} 首\nTrusted mappings：{trusted}\n本地状态：{local_state}"
+    )
+}

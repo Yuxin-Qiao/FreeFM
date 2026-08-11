@@ -107,7 +107,7 @@ CLI, never the TUI.
 | `freefm audit` | No | Re-check saved tracks: still_free / became_restricted / unavailable / unknown |
 | `freefm review` | Local only | Approve a candidate as a trusted free version; never writes remotely |
 | `freefm sync` | Append only | Add strictly verified free originals |
-| `freefm status` | No | Check local session and account |
+| `freefm status` | No | Check session/account plus local sync metadata |
 | `freefm doctor` | No | Check permissions, state, and API shape |
 | `freefm tui` | Selected action | Guided terminal interface |
 
