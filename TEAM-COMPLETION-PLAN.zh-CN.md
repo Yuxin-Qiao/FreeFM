@@ -49,10 +49,10 @@
 
 ### 2026-08-12 当前审计刷新
 
-- 当前 `main` 与 `origin/main` 均为 `e146707`，工作区干净；本轮主 CI
-  `31564640529`、CodeQL `31564640565` 全绿。按用户要求直接推送 `main`，未创建
-  PR；仓库 ruleset 因直推 bypass 了 PR/required-check gate，且没有 `ai-review`
-  check，这个治理缺口仍单独保留。
+- 本轮代码/closeout 提交 `e146707` 的主 CI `31564640529`、CodeQL `31564640565`
+  全绿；随后仅有事实文档收口提交直接推送 `main`，当前 `HEAD == origin/main`
+  且工作区干净。未创建 PR；仓库 ruleset 因直推 bypass 了 PR/required-check gate，
+  且没有 `ai-review` check，这个治理缺口仍单独保留。
 - 当前本地 release binary 为 1,970,848 bytes，SHA-256 为
   `1458f5c5fab5ebb91cb7d83090c553ce981e108859c0a86080045e37a75648c4`。
 - 观察证据为 61 条 session、63 条 passive；LaunchAgent 已加载但未运行；Hermes

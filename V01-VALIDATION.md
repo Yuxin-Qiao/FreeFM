@@ -20,11 +20,11 @@ Date: 2026-08-10 (Asia/Shanghai); current refresh: 2026-08-12
 
 ## Current audit refresh (2026-08-12)
 
-- The current audited commit is `e14670771777d7bae48be317221e449dd3f11c83`, and
-  `HEAD == origin/main` with a clean worktree. Main CI run `31564640529` and
-  CodeQL run `31564640565` completed successfully; the direct push bypassed the
-  repository's PR/required-check ruleset path, so no `ai-review` check is claimed
-  for this commit.
+- The implementation/closeout commit `e14670771777d7bae48be317221e449dd3f11c83`
+  passed main CI run `31564640529` and CodeQL run `31564640565`; a subsequent
+  docs-only closeout was pushed directly, leaving `HEAD == origin/main` and a
+  clean worktree. The direct push bypassed the repository's PR/required-check
+  ruleset path, so no `ai-review` check is claimed for this validation.
 - The current local release binary is 1,970,848 bytes with SHA-256
   `1458f5c5fab5ebb91cb7d83090c553ce981e108859c0a86080045e37a75648c4`.
 - The observation directory has 61 session records and 63 passive records;
@@ -33,6 +33,11 @@ Date: 2026-08-10 (Asia/Shanghai); current refresh: 2026-08-12
   legacy `freefm-hourly` job and no active jobs.
 - There is no `v0.1.0` tag, GitHub Release, Homebrew Formula publication, or
   real Spotify/Apple Music/YouTube Music credential available on this machine.
+- Codex sandbox: `codex sandbox -- target/release/freefm status --json` succeeds
+  with a temporary normalized catalog and an isolated data directory (exit 0,
+  `authenticated:false`). The default `~/.codex/cc-switch-model-catalog.json`
+  still fails Codex parsing on an `audio` model type; no global provider config
+  was changed and no `sync --quiet` was run.
 - External-platform transfer hardening is fixture-verified only. The current
   checkout performs post-append rereads, requires Apple `canEdit == true`, and
   binds mappings to both playlist and storefront context; none of these claims

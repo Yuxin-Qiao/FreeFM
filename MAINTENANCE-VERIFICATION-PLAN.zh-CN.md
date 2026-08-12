@@ -22,11 +22,11 @@ smoke 和 Hermes 创建后确认；同步 08-12 当前审计事实。G14 的问�
 
 ### 2026-08-12 当前审计刷新
 
-- 当前 `main` 与 `origin/main` 均为 `e146707`，工作区干净；本轮主 CI
-  `31564640529` 和 CodeQL `31564640565` 全绿，覆盖 Linux/macOS、MSRV、RustSec、
-  secrets、verification 和 coverage。由于按用户要求直推 `main`，GitHub ruleset
-  记录了 PR/7 个 required checks 被 bypass；本轮没有 `ai-review` check，不能把它
-  记作规则集完整通过。
+- 本轮代码/closeout 提交 `e146707` 已由主 CI `31564640529` 和 CodeQL
+  `31564640565` 全绿验证，覆盖 Linux/macOS、MSRV、RustSec、secrets、verification
+  和 coverage；随后仅有事实文档收口提交直接推送 `main`，当前 `HEAD == origin/main`
+  且工作区干净。由于按用户要求直推 `main`，GitHub ruleset 记录了 PR/7 个
+  required checks 被 bypass；本轮没有 `ai-review` check，不能把它记作规则集完整通过。
 - 当前本地门禁为 `cargo test --all-targets --locked`：87 个库测试通过、1 个
   ignored，主程序 5 个测试通过；Clippy、release build、format、diff-check、
   shell、Skill/WorkBuddy 检查均通过。
@@ -85,7 +85,7 @@ smoke 和 Hermes 创建后确认；同步 08-12 当前审计事实。G14 的问�
 | G4 | 手工歌曲安全验证（L2）未实跑 | 账号持有人 1 分钟 | 未开始 |
 | G5 | `v0.1.0` tag / GitHub Release / checksum / SBOM / attestation 下载验证 | 先 G1+G2 | 未开始 |
 | G6 | Homebrew Formula 发布与 tap/install/test/audit | 先 G5 | 模板就绪未发布 |
-| G7 | Codex Skill 实机：cc-switch catalog 问题、`~/.codex/skills` 安装、`codex sandbox -- freefm sync --quiet` | 本机环境 | Skill 已安装；sandbox 路径未实跑 |
+| G7 | Codex Skill 实机：cc-switch catalog 问题、`~/.codex/skills` 安装、`codex sandbox -- freefm sync --quiet` | 本机环境 | Skill 已安装；隔离 `status` 已通过；默认 catalog 因 `audio` 类型解析失败，`sync` 未实跑 |
 | G8 | WorkBuddy 真实客户端导入 | 已登录客户端 | 客户端导入已记录；正式 Release ZIP checksum/attestation/只读调用未验证 |
 | G9 | OpenClaw/Hermes 固定 tag 重装、ClawHub stable channel | 先 G5 | 未开始 |
 | G10 | Hermes `freefm-sync`（每 6h、`--no-agent`）创建与 24h 正式周期观察 | 先 G2+G5 | closeout 最后一步 |
