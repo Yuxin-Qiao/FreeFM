@@ -74,6 +74,72 @@ freefm tui
 凭证只保存在 `~/.freefm/`，不写日志、不上传；不要把 Cookie、`MUSIC_U`、session 或
 二维码 key 发给任何人或 AI。
 
+### 导入 Spotify、Apple Music、YouTube Music 歌单
+
+`--source` 通过各平台官方元数据接口读取歌单，并沿用现有安全边界：
+`preview` 只读；导入到网易云的跨平台映射只有 `review` 的人工确认才能信任，普通的
+source→网易云 `sync` 只追加已经确认、且当前已被网易云严格证明可免费播放的目标歌曲。
+带 `--target` 的同平台同步直接使用来源稳定曲目 id，不搜索或替代录音。
+
+```sh
+# Spotify Web API OAuth access token
+export FREEFM_SPOTIFY_TOKEN='...'
+# 对没有用户国家信息的 token，可选设置 ISO-3166-1 alpha-2 market
+export FREEFM_SPOTIFY_MARKET='US'
+freefm preview --source 'https://open.spotify.com/playlist/<id>'
+freefm review  --source 'https://open.spotify.com/playlist/<id>'
+freefm sync    --source 'https://open.spotify.com/playlist/<id>'
+
+# 同平台追加复制：先校验目标歌单归属，再按稳定曲目 id 幂等追加
+freefm sync --source 'https://open.spotify.com/playlist/<source-id>' \
+  --target 'https://open.spotify.com/playlist/<target-id>'
+
+# Apple Music catalog 歌单：developer token
+export FREEFM_APPLE_MUSIC_DEVELOPER_TOKEN='...'
+freefm preview --source 'https://music.apple.com/us/playlist/<name>/pl.<id>'
+
+# Apple Music 资料库歌单：developer token + Music User Token
+export FREEFM_APPLE_MUSIC_USER_TOKEN='...'
+freefm preview --source 'https://music.apple.com/us/library/playlist/<id>'
+
+# 公开 YouTube / YouTube Music 歌单：Data API key
+export FREEFM_YOUTUBE_API_KEY='...'
+freefm preview --source 'https://music.youtube.com/playlist?list=<id>'
+# 私有歌单可改用 OAuth access token，不必设置 API key：
+export FREEFM_YOUTUBE_ACCESS_TOKEN='...'
+
+# Apple Music 目标必须是资料库歌单；YouTube 目标必须使用 OAuth
+freefm sync --source 'https://music.apple.com/us/playlist/<name>/pl.<source-id>' \
+  --target 'https://music.apple.com/us/library/playlist/<target-id>'
+freefm sync --source 'https://music.youtube.com/playlist?list=<source-id>' \
+  --target 'https://music.youtube.com/playlist?list=<target-id>'
+
+# 跨平台迁移：逐首搜索候选、人工选择并确认；review 不写远端歌单
+freefm review --source 'https://open.spotify.com/playlist/<source-id>' \
+  --target 'https://music.youtube.com/playlist?list=<target-id>'
+
+# TUI 也可传入同一来源，选中的操作会沿用它
+freefm tui --source 'https://open.spotify.com/playlist/<id>'
+
+# 只读检查 URL 解析和所需环境变量是否已配置
+freefm doctor --json --source 'https://open.spotify.com/playlist/<id>'
+# 只读检查目标凭证和权限；不请求平台、不写远端
+freefm doctor --json --target 'https://music.youtube.com/playlist?list=<target-id>'
+```
+
+外部平台凭证只从环境变量读取、只在本次运行使用，绝不写入 `~/.freefm/`；本地文件只保存
+明确确认的 mapping 和网易云同步状态。平台不支持的项目、不可用视频和元数据不完整的项目会计数
+并跳过；FreeFM 不下载音频，也不会自动替换录音。
+`sync --source --target` 只支持同一平台的稳定曲目 id 复制，会先读取目标歌单并按远端 id
+去重，再分批追加。跨平台必须先运行 `review --source --target`，搜索结果只作为候选，逐首明确确认后
+才会保存映射；没有完整映射时 `sync` 返回 `target_mapping_required` 并拒绝写入，不会静默替换录音。
+
+FreeFM 不内置 Spotify、Apple Music 或 YouTube 的 OAuth 登录/刷新和 token 持久化：
+这些流程需要各平台自己的应用注册、回调和密钥管理，内置会扩大本地凭证面。请在平台官方
+OAuth 流程中取得短期 token，只为本次命令导出环境变量，并用 `doctor --target` 查看所需
+权限。token 缺失或过期会在写入前 fail-closed。每个追加批次写入后都会复读目标归属和曲目；
+若复读无法确认追加结果，返回 `target_write_uncertain`，不会自动重试。
+
 ### 让 AI 帮你安装
 
 把下面整段交给能操作终端的 AI：

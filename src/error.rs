@@ -17,6 +17,20 @@ pub enum AppError {
     AmbiguousPlaylist,
     StateCorrupt(String),
     ApiIncompatible(String),
+    SourceUrlInvalid(String),
+    SourceAuthRequired(String),
+    SourceApiIncompatible(String),
+    SourceTimeout,
+    SourceRemote(String),
+    TargetUrlInvalid(String),
+    TargetAuthRequired(String),
+    TargetApiIncompatible(String),
+    TargetTimeout,
+    TargetRemote(String),
+    TargetWriteUncertain(String),
+    TargetNotOwned(String),
+    TargetReadOnly(String),
+    TargetMappingRequired(String),
     Timeout,
     Remote(String),
     Io(io::Error),
@@ -42,6 +56,26 @@ impl Display for AppError {
             ),
             Self::StateCorrupt(message) => write!(f, "本机状态文件损坏：{message}"),
             Self::ApiIncompatible(message) => write!(f, "网易云接口返回格式不兼容：{message}"),
+            Self::SourceUrlInvalid(message) => write!(f, "外部歌单 URL 不受支持：{message}"),
+            Self::SourceAuthRequired(message) => write!(f, "外部平台需要凭证：{message}"),
+            Self::SourceApiIncompatible(message) => {
+                write!(f, "外部平台接口返回格式不兼容：{message}")
+            }
+            Self::SourceTimeout => write!(f, "外部平台接口请求超时，请稍后重试"),
+            Self::SourceRemote(message) => write!(f, "外部平台接口请求失败：{message}"),
+            Self::TargetUrlInvalid(message) => write!(f, "目标歌单 URL 不受支持：{message}"),
+            Self::TargetAuthRequired(message) => write!(f, "目标平台需要写入凭证：{message}"),
+            Self::TargetApiIncompatible(message) => {
+                write!(f, "目标平台接口返回格式不兼容：{message}")
+            }
+            Self::TargetTimeout => write!(f, "目标平台接口请求超时，请稍后重试"),
+            Self::TargetRemote(message) => write!(f, "目标平台接口请求失败：{message}"),
+            Self::TargetWriteUncertain(message) => {
+                write!(f, "目标平台写入结果不确定：{message}")
+            }
+            Self::TargetNotOwned(message) => write!(f, "目标歌单归属校验失败：{message}"),
+            Self::TargetReadOnly(message) => write!(f, "目标歌单不可写：{message}"),
+            Self::TargetMappingRequired(message) => write!(f, "需要人工确认跨平台映射：{message}"),
             Self::Timeout => write!(f, "网易云接口请求超时，请稍后重试"),
             Self::Remote(message) => write!(f, "网易云接口请求失败：{message}"),
             Self::Io(error) => write!(f, "本机文件操作失败：{error}"),

@@ -11,6 +11,20 @@ pub fn json_error(error: &AppError) -> Value {
         AppError::AmbiguousPlaylist => ("ambiguous_playlist", error.to_string()),
         AppError::Timeout => ("timeout", error.to_string()),
         AppError::ApiIncompatible(_) => ("api_incompatible", error.to_string()),
+        AppError::SourceUrlInvalid(_) => ("source_url_invalid", error.to_string()),
+        AppError::SourceAuthRequired(_) => ("source_auth_required", error.to_string()),
+        AppError::SourceApiIncompatible(_) => ("source_api_incompatible", error.to_string()),
+        AppError::SourceTimeout => ("source_timeout", error.to_string()),
+        AppError::SourceRemote(_) => ("source_remote", error.to_string()),
+        AppError::TargetUrlInvalid(_) => ("target_url_invalid", error.to_string()),
+        AppError::TargetAuthRequired(_) => ("target_auth_required", error.to_string()),
+        AppError::TargetApiIncompatible(_) => ("target_api_incompatible", error.to_string()),
+        AppError::TargetTimeout => ("target_timeout", error.to_string()),
+        AppError::TargetRemote(_) => ("target_remote", error.to_string()),
+        AppError::TargetWriteUncertain(_) => ("target_write_uncertain", error.to_string()),
+        AppError::TargetNotOwned(_) => ("target_not_owned", error.to_string()),
+        AppError::TargetReadOnly(_) => ("target_read_only", error.to_string()),
+        AppError::TargetMappingRequired(_) => ("target_mapping_required", error.to_string()),
         AppError::StateCorrupt(_) => ("state_corrupt", error.to_string()),
         _ => ("error", error.to_string()),
     };
@@ -144,7 +158,24 @@ pub fn preview_human(value: &Value) -> String {
         }
     }
 
-    let mut output = format!("Private FM：{count} 首");
+    let mut output = if let Some(kind) = value.get("source_kind").and_then(Value::as_str) {
+        let label = match kind {
+            "spotify" => "Spotify",
+            "apple_music" => "Apple Music",
+            "youtube_music" => "YouTube Music",
+            _ => "外部歌单",
+        };
+        format!("{label}：{count} 首")
+    } else {
+        format!("Private FM：{count} 首")
+    };
+    if let Some(skipped) = value
+        .get("source_skipped_count")
+        .and_then(Value::as_u64)
+        .filter(|count| *count > 0)
+    {
+        output.push_str(&format!("（{skipped} 项因元数据缺失或不支持而跳过）"));
+    }
     for (label, entries) in sections {
         output.push_str("\n\n");
         output.push_str(label);

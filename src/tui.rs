@@ -15,6 +15,7 @@ pub(crate) struct Choice {
     pub(crate) command: &'static str,
     pub(crate) json: bool,
     pub(crate) quiet: bool,
+    pub(crate) source: Option<String>,
 }
 
 #[derive(Clone, Copy)]
@@ -112,14 +113,18 @@ impl Drop for TerminalGuard {
     }
 }
 
-pub(crate) fn choose(initial_json: bool, data_dir: Option<&Path>) -> io::Result<Option<Choice>> {
+pub(crate) fn choose(
+    initial_json: bool,
+    data_dir: Option<&Path>,
+    source: Option<String>,
+) -> io::Result<Option<Choice>> {
     let _guard = TerminalGuard::enter()?;
     let mut selected = 0;
     let mut json = initial_json;
     let mut quiet = false;
 
     loop {
-        draw(selected, json, quiet, data_dir, false)?;
+        draw(selected, json, quiet, data_dir, false, source.is_some())?;
         let Event::Key(key) = event::read()? else {
             continue;
         };
@@ -140,13 +145,16 @@ pub(crate) fn choose(initial_json: bool, data_dir: Option<&Path>) -> io::Result<
                 let Some(command) = item.command else {
                     return Ok(None);
                 };
-                if item.writes_remote && !confirm_sync(selected, json, quiet, data_dir)? {
+                if item.writes_remote
+                    && !confirm_sync(selected, json, quiet, data_dir, source.is_some())?
+                {
                     continue;
                 }
                 return Ok(Some(Choice {
                     command,
                     json,
                     quiet,
+                    source,
                 }));
             }
             _ => {}
@@ -167,9 +175,10 @@ fn confirm_sync(
     json: bool,
     quiet: bool,
     data_dir: Option<&Path>,
+    source_configured: bool,
 ) -> io::Result<bool> {
     loop {
-        draw(selected, json, quiet, data_dir, true)?;
+        draw(selected, json, quiet, data_dir, true, source_configured)?;
         let Event::Key(key) = event::read()? else {
             continue;
         };
@@ -220,6 +229,7 @@ fn draw(
     quiet: bool,
     data_dir: Option<&Path>,
     confirm: bool,
+    source_configured: bool,
 ) -> io::Result<()> {
     let mut output = io::stdout();
     let (width, _) = terminal::size().unwrap_or((80, 24));
@@ -269,7 +279,12 @@ fn draw(
         Print("\r\n"),
         SetForegroundColor(Color::DarkGrey),
         Print(format!(
-            "  输出：{}   静默：{}   数据目录：{}\r\n",
+            "  来源：{}   输出：{}   静默：{}   数据目录：{}\r\n",
+            if source_configured {
+                "外部歌单"
+            } else {
+                "私人 FM"
+            },
             if json { "JSON" } else { "易读文本" },
             if quiet { "开" } else { "关" },
             data_dir

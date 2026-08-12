@@ -8,6 +8,8 @@ pub struct Cli {
     pub quiet: bool,
     pub data_dir: Option<PathBuf>,
     pub max_additions: Option<usize>,
+    pub source: Option<String>,
+    pub target: Option<String>,
 }
 
 impl Cli {
@@ -31,6 +33,8 @@ impl Cli {
         let mut quiet = false;
         let mut data_dir = None;
         let mut max_additions = None;
+        let mut source = None;
+        let mut target = None;
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--json" => json_output = true,
@@ -54,6 +58,22 @@ impl Cli {
                     }
                     max_additions = Some(value);
                 }
+                "--source" => {
+                    source = Some(args.next().ok_or_else(|| {
+                        AppError::Usage(
+                            "--source 需要一个 Spotify、Apple Music 或 YouTube Music 歌单 URL"
+                                .to_string(),
+                        )
+                    })?);
+                }
+                "--target" => {
+                    target = Some(args.next().ok_or_else(|| {
+                        AppError::Usage(
+                            "--target 需要一个 Spotify、Apple Music 或 YouTube Music 歌单 URL"
+                                .to_string(),
+                        )
+                    })?);
+                }
                 "--help" | "-h" => return Err(AppError::Help(usage())),
                 other => return Err(AppError::Usage(format!("未知参数：{other}\n\n{}", usage()))),
             }
@@ -68,26 +88,53 @@ impl Cli {
                 "--max-additions 仅支持 preview 和 sync".to_string(),
             ));
         }
+        if source.is_some()
+            && !matches!(
+                command.as_str(),
+                "preview" | "sync" | "review" | "doctor" | "tui"
+            )
+        {
+            return Err(AppError::Usage(
+                "--source 仅支持 preview、sync、review、doctor 和 tui".to_string(),
+            ));
+        }
+        if target.is_some() && !matches!(command.as_str(), "sync" | "review" | "doctor") {
+            return Err(AppError::Usage(
+                "--target 仅支持 sync、review 和 doctor".to_string(),
+            ));
+        }
+        if target.is_some() && source.is_none() && matches!(command.as_str(), "sync" | "review") {
+            return Err(AppError::Usage(
+                "--target 需要同时提供 --source 外部歌单 URL".to_string(),
+            ));
+        }
         Ok(Self {
             command,
             json: json_output,
             quiet,
             data_dir,
             max_additions,
+            source,
+            target,
         })
     }
 }
 
 pub(crate) fn usage() -> String {
-    "FreeFM\n\n用法：freefm <auth|preview|sync|audit|review|status|doctor|tui> [--json] [--quiet] [--data-dir PATH] [--max-additions N]\n\n\
-auth     生成二维码并等待网易云官方客户端确认\n\
-preview  读取私人 FM 并预览加入、候选、跳过；绝不写远端歌单\n\
-sync     读取私人 FM，并 append-only 写入 FreeFM · Auto\n\
-audit    只读复查 FreeFM · Auto 全部歌曲当前是否仍可免费完整播放\n\
-review   交互式确认免费同曲候选，仅本机保存 trusted mapping\n\
-status   检查本机会话、登录状态和本地运行统计\n\
-doctor   检查本机状态、权限和 API 登录可用性
-tui      打开轻量交互界面；不会改变命令的安全边界
-version  输出版本号"
-        .to_string()
+    [
+        "FreeFM",
+        "",
+        "用法：freefm <auth|preview|sync|audit|review|status|doctor|tui> [--json] [--quiet] [--data-dir PATH] [--max-additions N] [--source URL] [--target URL]",
+        "",
+        "auth     生成二维码并等待网易云官方客户端确认",
+        "preview  读取私人 FM，或用 --source 读取外部歌单并预览；绝不写远端歌单",
+        "sync     读取私人 FM，或用 --source 同步外部歌单；--target 可追加到已验证外部目标歌单",
+        "audit    只读复查 FreeFM · Auto 全部歌曲当前是否仍可免费完整播放",
+        "review   交互式确认免费同曲或跨平台候选；--source/--target 可保存外部映射",
+        "status   检查本机会话、登录状态和本地运行统计",
+        "doctor   检查本机状态、权限和 API 登录可用性；--source/--target 检查外部凭证配置",
+        "tui      打开轻量交互界面；不会改变命令的安全边界",
+        "version  输出版本号",
+    ]
+    .join("\n")
 }

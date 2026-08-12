@@ -271,8 +271,10 @@ dependencies = [
  "libc",
  "netease-music",
  "qrcode",
+ "reqwest",
  "serde",
  "serde_json",
+ "url",
 ]
 
 [[package]]

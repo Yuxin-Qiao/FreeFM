@@ -226,3 +226,28 @@ LaunchAgent `com.freefm.validation`:
 
 Status: within the +7d observation window (gate 2026-08-16 23:21
 Asia/Shanghai). No sync or cron has been enabled.
+
+## External playlist transfer hardening (2026-08-12)
+
+The external Spotify, Apple Music, and YouTube Music adapters remain covered
+by redacted fake-transport fixtures only. This checkout has no configured
+`FREEFM_SPOTIFY_*`, `FREEFM_APPLE_MUSIC_*`, or `FREEFM_YOUTUBE_*` credentials,
+so no real-account read/search/confirm/append/rerun proof is claimed here.
+
+The implementation now rereads target ownership and items after every append
+batch. A transport error that may have raced with a provider-side write is
+immediately reread; a missing confirmation returns `target_write_uncertain`
+and does not retry automatically. Apple library targets require explicit
+`attributes.canEdit == true`. External mappings are keyed and validated by
+source provider/playlist/storefront plus target provider/playlist/storefront,
+so an approval cannot be reused for another target context.
+
+`freefm doctor --json --target <URL>` reports only redacted credential
+booleans, required scopes, and the remote checks that will occur. FreeFM does
+not implement provider OAuth login or refresh-token persistence; provider app
+registration and an operator-owned token remain external prerequisites.
+
+Local gates for this change: `cargo test --all-targets --locked` = 87 passed,
+1 ignored, plus 5 main tests; locked Clippy, release build, format/diff checks,
+shell syntax, matching Hermes helpers, and WorkBuddy package inspection all
+passed. No real-platform E2E or +7d release Go/No-Go decision is implied.

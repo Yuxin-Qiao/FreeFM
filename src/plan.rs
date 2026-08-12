@@ -5,6 +5,7 @@ use crate::domain::{
 };
 use crate::error::{AppError, AppResult};
 use crate::protocol::{PLAYLIST_NAME, RemoteApi};
+use crate::source::{SourceKind, SourcePlaylist};
 use crate::storage::{StateFile, TrustedStore};
 use serde::Serialize;
 use serde_json::Value;
@@ -77,6 +78,10 @@ pub(crate) struct PlanReport {
     pub(crate) http_requests: u64,
     pub(crate) state_corrupt_recovered: bool,
     pub(crate) trusted_corrupt_recovered: bool,
+    pub(crate) source_kind: Option<SourceKind>,
+    pub(crate) source_playlist_id: Option<String>,
+    pub(crate) source_track_count: Option<usize>,
+    pub(crate) source_skipped_count: usize,
 }
 
 pub(crate) fn account_uid(body: &Value) -> AppResult<String> {
@@ -180,6 +185,84 @@ pub(crate) fn build_plan_with_limit<R: RemoteApi>(
         .map(|song| song.id.clone())
         .collect::<Vec<_>>();
     let detail_map = remote.details(&fm_ids)?;
+    let fm_songs = fm_songs
+        .into_iter()
+        .map(|song| merge_song_metadata(&song, detail_map.get(&song.id)))
+        .collect();
+    build_plan_from_songs(
+        remote,
+        uid,
+        state,
+        trusted,
+        command,
+        state_corrupt_recovered,
+        max_additions,
+        fm_songs,
+        false,
+        None,
+        None,
+        None,
+        0,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn build_source_plan_with_limit<R: RemoteApi>(
+    remote: &mut R,
+    uid: &str,
+    state: &StateFile,
+    trusted: &TrustedStore,
+    command: &str,
+    state_corrupt_recovered: bool,
+    max_additions: Option<usize>,
+    source: &SourcePlaylist,
+) -> AppResult<PlanReport> {
+    let songs = source
+        .tracks
+        .iter()
+        .map(|track| Song {
+            id: format!("{}:{}", source.kind.slug(), track.id),
+            name: track.name.clone(),
+            artists: track.artists.clone(),
+            duration_ms: track.duration_ms,
+            album: track.album.clone(),
+            fee: None,
+            privilege: None,
+        })
+        .collect();
+    build_plan_from_songs(
+        remote,
+        uid,
+        state,
+        trusted,
+        command,
+        state_corrupt_recovered,
+        max_additions,
+        songs,
+        true,
+        Some(source.kind),
+        Some(source.id.clone()),
+        Some(source.tracks.len()),
+        source.skipped_count,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_plan_from_songs<R: RemoteApi>(
+    remote: &mut R,
+    uid: &str,
+    state: &StateFile,
+    trusted: &TrustedStore,
+    command: &str,
+    state_corrupt_recovered: bool,
+    max_additions: Option<usize>,
+    songs: Vec<Song>,
+    imported: bool,
+    source_kind: Option<SourceKind>,
+    source_playlist_id: Option<String>,
+    source_track_count: Option<usize>,
+    source_skipped_count: usize,
+) -> AppResult<PlanReport> {
     let cached_playlist = if let Some(state_playlist_id) = state.playlist_id.as_deref() {
         remote.playlist_summary_by_id(state_playlist_id, uid)?
     } else {
@@ -205,17 +288,30 @@ pub(crate) fn build_plan_with_limit<R: RemoteApi>(
     };
     let mut decisions = Vec::new();
     let mut planned_ids = HashSet::new();
-    for original in fm_songs {
-        let original = merge_song_metadata(&original, detail_map.get(&original.id));
-        // The privilege fields are the primary entitlement signal. The official
-        // URL endpoint is queried only as a capability probe; its URL is never
-        // returned, stored, downloaded, or used for playlist replacement.
-        let original_probe = remote.playback_probe(&original.id)?;
-        let original_availability = availability_from_fields(&original, Some(original_probe));
-        let original_evidence = availability_evidence(&original, original_probe);
+    for original in songs {
+        // For Private FM, privilege fields and the official URL endpoint are
+        // the entitlement proof. External services only provide metadata, so
+        // they always start as unknown and must use a trusted mapping.
+        let (original_availability, original_evidence) = if imported {
+            let probe = crate::domain::Probe {
+                has_url: false,
+                fee: None,
+                free_trial: false,
+            };
+            (
+                Availability::Unknown,
+                availability_evidence(&original, probe),
+            )
+        } else {
+            let original_probe = remote.playback_probe(&original.id)?;
+            (
+                availability_from_fields(&original, Some(original_probe)),
+                availability_evidence(&original, original_probe),
+            )
+        };
         let mut candidates = Vec::new();
-        let (action, selected, reason, trusted_mapping, trusted_invalid) = if original_availability
-            == Availability::Free
+        let (action, selected, reason, trusted_mapping, trusted_invalid) = if !imported
+            && original_availability == Availability::Free
         {
             (
                 Action::AddOriginal,
@@ -305,7 +401,11 @@ pub(crate) fn build_plan_with_limit<R: RemoteApi>(
                     (
                         Action::CandidateOnly,
                         Some(candidate),
-                        "原歌曲受限；免费同曲候选仅供人工 review，v0.1 不自动替换".to_string(),
+                        if imported {
+                            "外部歌单歌曲只提供元数据；网易云免费同曲候选仅供人工 review，确认后才会追加".to_string()
+                        } else {
+                            "原歌曲受限；免费同曲候选仅供人工 review，v0.1 不自动替换".to_string()
+                        },
                         false,
                         trusted_stale,
                     )
@@ -313,14 +413,16 @@ pub(crate) fn build_plan_with_limit<R: RemoteApi>(
                     (
                         Action::Skip,
                         None,
-                        match original_availability {
-                            Availability::Unavailable => {
+                        match (imported, original_availability) {
+                            (true, _) => "外部歌单只提供元数据，未找到通过严格同曲和免费验证的候选"
+                                .to_string(),
+                            (false, Availability::Unavailable) => {
                                 "原歌曲不可用且没有高置信度免费同曲".to_string()
                             }
-                            Availability::Restricted => {
+                            (false, Availability::Restricted) => {
                                 "原歌曲需要 VIP/购买且没有高置信度免费同曲".to_string()
                             }
-                            _ => "播放权限未知，按安全原则跳过".to_string(),
+                            (false, _) => "播放权限未知，按安全原则跳过".to_string(),
                         },
                         false,
                         trusted_stale,
@@ -415,5 +517,9 @@ pub(crate) fn build_plan_with_limit<R: RemoteApi>(
         http_requests: remote.http_requests(),
         state_corrupt_recovered,
         trusted_corrupt_recovered: false,
+        source_kind,
+        source_playlist_id,
+        source_track_count,
+        source_skipped_count,
     })
 }

@@ -1,5 +1,6 @@
 //! FreeFM library: one-shot CLI logic for safely syncing free-playable
-//! NetEase Private FM tracks. No daemon, scheduler, or model call lives here.
+//! NetEase tracks, including reviewed metadata imports from external playlists.
+//! No daemon, scheduler, or model call lives here.
 
 #[cfg(not(unix))]
 compile_error!("FreeFM v0.1 supports macOS and Linux only");
@@ -15,8 +16,10 @@ mod plan;
 mod protocol;
 mod render;
 mod runner;
+mod source;
 mod storage;
 mod sync;
+mod target;
 mod trusted;
 
 pub use cli::Cli;
@@ -36,7 +39,10 @@ mod tests {
         privilege_i64, same_recording_score, song_from_value,
     };
     use crate::error::AppResult;
-    use crate::plan::{Action, account_uid, build_plan, build_plan_with_limit, select_playlist};
+    use crate::plan::{
+        Action, account_uid, build_plan, build_plan_with_limit, build_source_plan_with_limit,
+        select_playlist,
+    };
     use crate::protocol::{
         PLAYLIST_NAME, RemoteApi, playlist_detail_extra_requests, playlist_track_ids,
         remote_code_error,
@@ -45,12 +51,14 @@ mod tests {
         audit_human, format_duration_ago, preview_human, rendered_output, status_human,
     };
     use crate::runner::{operational_metadata, success_envelope};
+    use crate::source::{SourceKind, SourcePlaylist, SourceTrack};
     use crate::storage::{
-        SessionFile, StateFile, StoredCookie, SyncLock, TrustedMapping, TrustedStore, load_session,
-        load_state, load_trusted, now_seconds, restrict_dir, save_trusted, write_private_json,
+        ExternalMappingStore, SessionFile, StateFile, StoredCookie, SyncLock, TrustedMapping,
+        TrustedStore, load_external_mappings, load_session, load_state, load_trusted, now_seconds,
+        restrict_dir, save_external_mappings, save_trusted, write_private_json,
     };
     use crate::sync::{AccountContext, require_login, require_ordinary_account, sync};
-    use crate::trusted::{review, review_with_selector};
+    use crate::trusted::{review, review_with_selector, review_with_selector_source};
     use serde_json::{Value, json};
     use std::collections::{HashMap, HashSet};
     use std::env;
@@ -765,6 +773,62 @@ mod tests {
         ])
         .unwrap();
         assert_eq!(cli.max_additions, Some(3));
+        let source_cli = Cli::parse([
+            "freefm".to_string(),
+            "preview".to_string(),
+            "--source".to_string(),
+            "https://open.spotify.com/playlist/abc".to_string(),
+        ])
+        .unwrap();
+        assert_eq!(
+            source_cli.source.as_deref(),
+            Some("https://open.spotify.com/playlist/abc")
+        );
+        let target_cli = Cli::parse([
+            "freefm".to_string(),
+            "sync".to_string(),
+            "--source".to_string(),
+            "https://open.spotify.com/playlist/source".to_string(),
+            "--target".to_string(),
+            "https://open.spotify.com/playlist/target".to_string(),
+        ])
+        .unwrap();
+        assert_eq!(
+            target_cli.target.as_deref(),
+            Some("https://open.spotify.com/playlist/target")
+        );
+        let review_target_cli = Cli::parse([
+            "freefm".to_string(),
+            "review".to_string(),
+            "--source".to_string(),
+            "https://open.spotify.com/playlist/source".to_string(),
+            "--target".to_string(),
+            "https://music.youtube.com/playlist?list=PL_target".to_string(),
+        ])
+        .unwrap();
+        assert_eq!(review_target_cli.command, "review");
+        let doctor_target_cli = Cli::parse([
+            "freefm".to_string(),
+            "doctor".to_string(),
+            "--target".to_string(),
+            "https://music.youtube.com/playlist?list=PL_target".to_string(),
+        ])
+        .unwrap();
+        assert_eq!(
+            doctor_target_cli.target.as_deref(),
+            Some("https://music.youtube.com/playlist?list=PL_target")
+        );
+        let tui_source = Cli::parse([
+            "freefm".to_string(),
+            "tui".to_string(),
+            "--source".to_string(),
+            "https://music.youtube.com/playlist?list=PL_abc".to_string(),
+        ])
+        .unwrap();
+        assert_eq!(
+            tui_source.source.as_deref(),
+            Some("https://music.youtube.com/playlist?list=PL_abc")
+        );
         for raw in ["0", "-1", "10001", "nope"] {
             assert!(matches!(
                 Cli::parse([
@@ -790,6 +854,33 @@ mod tests {
                 "freefm".to_string(),
                 "preview".to_string(),
                 "--max-additions".to_string()
+            ]),
+            Err(AppError::Usage(_))
+        ));
+        assert!(matches!(
+            Cli::parse([
+                "freefm".to_string(),
+                "status".to_string(),
+                "--source".to_string(),
+                "https://open.spotify.com/playlist/abc".to_string()
+            ]),
+            Err(AppError::Usage(_))
+        ));
+        assert!(matches!(
+            Cli::parse([
+                "freefm".to_string(),
+                "preview".to_string(),
+                "--target".to_string(),
+                "https://open.spotify.com/playlist/target".to_string(),
+            ]),
+            Err(AppError::Usage(_))
+        ));
+        assert!(matches!(
+            Cli::parse([
+                "freefm".to_string(),
+                "sync".to_string(),
+                "--target".to_string(),
+                "https://open.spotify.com/playlist/target".to_string(),
             ]),
             Err(AppError::Usage(_))
         ));
@@ -897,6 +988,8 @@ mod tests {
             quiet: true,
             data_dir: None,
             max_additions: None,
+            source: None,
+            target: None,
         };
         let value = json!({"ok": true});
         assert!(rendered_output(&cli, &value, "ok", false).is_none());
@@ -1043,6 +1136,106 @@ mod tests {
         assert!(report.would_create_playlist);
         assert_eq!(remote.create_calls, 0);
         assert_eq!(remote.add_calls, 0);
+    }
+
+    #[test]
+    fn external_source_requires_trusted_mapping_before_append() {
+        let source = SourcePlaylist {
+            kind: SourceKind::Spotify,
+            id: "playlist-1".to_string(),
+            storefront: None,
+            apple_library: false,
+            tracks: vec![SourceTrack {
+                id: "sp1".to_string(),
+                canonical_id: None,
+                isrc: None,
+                name: "Same".to_string(),
+                artists: vec!["Artist".to_string()],
+                duration_ms: Some(180_000),
+                album: Some("Album".to_string()),
+            }],
+            skipped_count: 2,
+        };
+        let mut remote = FakeRemote::restricted_with_candidate();
+        let preview = build_source_plan_with_limit(
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            &TrustedStore::default(),
+            "preview",
+            false,
+            None,
+            &source,
+        )
+        .unwrap();
+        assert_eq!(preview.source_kind, Some(SourceKind::Spotify));
+        assert_eq!(preview.source_track_count, Some(1));
+        assert_eq!(preview.source_skipped_count, 2);
+        assert!(matches!(preview.decisions[0].action, Action::CandidateOnly));
+        assert!(preview.would_add_ids.is_empty());
+        assert_eq!(remote.add_calls, 0);
+
+        let mut trusted = TrustedStore::default();
+        trusted.approve("spotify:sp1", "2");
+        let root = env::temp_dir().join(format!("freefm-source-sync-{}", now_seconds()));
+        let paths = Paths { root: root.clone() };
+        let report = build_source_plan_with_limit(
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            &trusted,
+            "sync",
+            false,
+            None,
+            &source,
+        )
+        .unwrap();
+        assert!(matches!(report.decisions[0].action, Action::TrustedMapping));
+        let synced = sync(&paths, report, "u", &mut remote).unwrap();
+        assert_eq!(synced.added_ids, vec!["2"]);
+        assert_eq!(remote.add_calls, 1);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn external_source_review_persists_only_explicit_confirmation() {
+        let source = SourcePlaylist {
+            kind: SourceKind::Spotify,
+            id: "playlist-1".to_string(),
+            storefront: None,
+            apple_library: false,
+            tracks: vec![SourceTrack {
+                id: "sp1".to_string(),
+                canonical_id: None,
+                isrc: None,
+                name: "Same".to_string(),
+                artists: vec!["Artist".to_string()],
+                duration_ms: Some(180_000),
+                album: Some("Album".to_string()),
+            }],
+            skipped_count: 0,
+        };
+        let root = env::temp_dir().join(format!("freefm-source-review-{}", now_seconds()));
+        let paths = Paths { root: root.clone() };
+        let mut remote = FakeRemote::restricted_with_candidate();
+        let value = review_with_selector_source(
+            &paths,
+            &mut remote,
+            "u",
+            &StateFile::default(),
+            false,
+            true,
+            Some(&source),
+            |_| Some(0),
+            || true,
+            |_| Vec::new(),
+        )
+        .unwrap();
+        assert_eq!(value["approved_count"], 1);
+        let (trusted, recovered) = load_trusted(&paths).unwrap();
+        assert!(!recovered);
+        assert_eq!(trusted.mappings["spotify:sp1"].target_id, "2");
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
@@ -1721,6 +1914,32 @@ mod tests {
         assert_eq!(loaded.mappings.get("1").unwrap().target_id, "2");
         fs::write(paths.trusted(), "{not json").unwrap();
         let (loaded, corrupt) = load_trusted(&paths).unwrap();
+        assert!(corrupt);
+        assert!(loaded.mappings.is_empty());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn external_mapping_store_roundtrip_and_corrupt_recovery() {
+        let root = env::temp_dir().join(format!("freefm-external-mappings-{}", now_seconds()));
+        let paths = Paths { root: root.clone() };
+        let mut store = ExternalMappingStore::default();
+        store.approve(
+            "spotify:s1",
+            "spotify",
+            "playlist-1",
+            None,
+            "youtube_music",
+            "PL_target",
+            None,
+            "v1",
+        );
+        save_external_mappings(&paths, &store).unwrap();
+        let (loaded, corrupt) = load_external_mappings(&paths).unwrap();
+        assert!(!corrupt);
+        assert_eq!(loaded.mappings["spotify:s1"].target_id, "v1");
+        fs::write(paths.external_mappings(), "not json").unwrap();
+        let (loaded, corrupt) = load_external_mappings(&paths).unwrap();
         assert!(corrupt);
         assert!(loaded.mappings.is_empty());
         let _ = fs::remove_dir_all(root);

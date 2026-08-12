@@ -1,7 +1,8 @@
 use crate::domain::{Availability, availability_from_fields, merge_song_metadata};
 use crate::error::AppResult;
-use crate::plan::{Action, Candidate, build_plan};
+use crate::plan::{Action, Candidate, build_plan, build_source_plan_with_limit};
 use crate::protocol::RemoteApi;
+use crate::source::SourcePlaylist;
 use crate::storage::{Paths, StateFile, load_trusted, save_trusted};
 use serde_json::{Value, json};
 use std::io::{self, Write};
@@ -169,19 +170,63 @@ pub(crate) fn review_with_selector<
     state: &StateFile,
     state_corrupt_recovered: bool,
     json: bool,
+    select: S,
+    confirm: F,
+    manage: M,
+) -> AppResult<Value> {
+    review_with_selector_source(
+        paths,
+        remote,
+        uid,
+        state,
+        state_corrupt_recovered,
+        json,
+        None,
+        select,
+        confirm,
+        manage,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn review_with_selector_source<
+    R: RemoteApi,
+    S: FnMut(&CandidatePrompt) -> Option<usize>,
+    F: FnMut() -> bool,
+    M: FnMut(&[(String, String)]) -> Vec<String>,
+>(
+    paths: &Paths,
+    remote: &mut R,
+    uid: &str,
+    state: &StateFile,
+    state_corrupt_recovered: bool,
+    json: bool,
+    source: Option<&SourcePlaylist>,
     mut select: S,
     mut confirm: F,
     mut manage: M,
 ) -> AppResult<Value> {
     let (mut trusted, trusted_corrupt_recovered) = load_trusted(paths)?;
-    let report = build_plan(
-        remote,
-        uid,
-        state,
-        &trusted,
-        "preview",
-        state_corrupt_recovered,
-    )?;
+    let report = match source {
+        Some(source) => build_source_plan_with_limit(
+            remote,
+            uid,
+            state,
+            &trusted,
+            "preview",
+            state_corrupt_recovered,
+            None,
+            source,
+        )?,
+        None => build_plan(
+            remote,
+            uid,
+            state,
+            &trusted,
+            "preview",
+            state_corrupt_recovered,
+        )?,
+    };
     let mut approved = Vec::new();
     let mut skipped = Vec::new();
     let mut invalid = Vec::new();

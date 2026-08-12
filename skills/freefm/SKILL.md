@@ -34,6 +34,48 @@ directly without a model turn.
 - Run `preview` before the first `sync`. Only `sync` may write remotely.
 - Do not schedule until one manual preview and one manual sync have succeeded.
 
+External playlist import is supported through `--source` for Spotify, Apple
+Music, and YouTube Music URLs:
+
+```sh
+freefm preview --source 'https://open.spotify.com/playlist/<id>'
+freefm review --source 'https://open.spotify.com/playlist/<id>'
+freefm sync --source 'https://open.spotify.com/playlist/<id>'
+freefm sync --source 'https://open.spotify.com/playlist/<source-id>' \
+  --target 'https://open.spotify.com/playlist/<target-id>'
+freefm review --source 'https://open.spotify.com/playlist/<source-id>' \
+  --target 'https://music.youtube.com/playlist?list=<target-id>'
+freefm tui --source 'https://open.spotify.com/playlist/<id>'
+freefm doctor --json --source 'https://open.spotify.com/playlist/<id>'
+# Read-only target credential/scope check; no provider request or write
+freefm doctor --json --target 'https://music.youtube.com/playlist?list=<target-id>'
+```
+
+Set only the matching environment credential for the selected provider:
+`FREEFM_SPOTIFY_TOKEN` (optionally `FREEFM_SPOTIFY_MARKET`),
+`FREEFM_APPLE_MUSIC_DEVELOPER_TOKEN` (and
+`FREEFM_APPLE_MUSIC_USER_TOKEN` for library playlists), or
+`FREEFM_YOUTUBE_API_KEY` / `FREEFM_YOUTUBE_ACCESS_TOKEN`. These credentials are
+read for one run and never persisted. External-to-NetEase tracks always require
+explicit `review` before the ordinary source `sync`; source metadata never
+unlocks, downloads, or replaces audio. Same-provider `--target` sync uses only
+the stable source item id.
+
+`sync --source --target` is the only external write path. It supports
+same-provider stable-id copies to owned Spotify playlists, Apple Music library
+playlists, and YouTube playlists. It verifies target ownership, rereads current
+items, deduplicates, and appends only. Apple targets require a Music User Token;
+YouTube targets require OAuth. Cross-provider transfers require explicit
+per-track confirmation through `review --source --target`; search results are
+never written directly. Until every source track has a valid mapping,
+`sync` returns `target_mapping_required` and writes nothing.
+
+FreeFM does not implement provider OAuth login or refresh-token storage. Obtain
+provider tokens through the official provider flow, export them for one run,
+and use `doctor --target` to inspect redacted credential booleans and required
+scopes. Target writes reread ownership and items after every append batch; an
+unconfirmed reread returns `target_write_uncertain` and never auto-retries.
+
 ## Locate or install the CLI
 
 Prefer an existing `freefm` on `PATH`, then `$HOME/.local/bin/freefm`. If it is

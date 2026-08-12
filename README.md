@@ -78,6 +78,83 @@ freefm tui
 Credentials stay local under `~/.freefm/` — never logged, never uploaded. Never paste a
 cookie, `MUSIC_U`, session, or QR key into an AI chat.
 
+### Import Spotify, Apple Music, or YouTube Music playlists
+
+`--source` reads playlist metadata through the official service APIs and keeps
+the existing safety boundary: `preview` is read-only, `review` is the only way
+to approve a cross-service mapping for the NetEase destination, and ordinary
+source-to-NetEase `sync` only appends targets that were already approved and
+are currently proven free on NetEase. Same-provider `--target` sync uses the
+source service's stable item ids instead of searching for a recording.
+
+```sh
+# Spotify Web API OAuth access token
+export FREEFM_SPOTIFY_TOKEN='...'
+# Optional ISO-3166-1 alpha-2 market for tokens without a user country
+export FREEFM_SPOTIFY_MARKET='US'
+freefm preview --source 'https://open.spotify.com/playlist/<id>'
+freefm review  --source 'https://open.spotify.com/playlist/<id>'
+freefm sync    --source 'https://open.spotify.com/playlist/<id>'
+
+# Same-provider append-only copy; target ownership is verified first.
+freefm sync --source 'https://open.spotify.com/playlist/<source-id>' \
+  --target 'https://open.spotify.com/playlist/<target-id>'
+
+# Apple Music catalog playlist: developer token
+export FREEFM_APPLE_MUSIC_DEVELOPER_TOKEN='...'
+freefm preview --source 'https://music.apple.com/us/playlist/<name>/pl.<id>'
+
+# Apple Music library playlist: developer token + Music User Token
+export FREEFM_APPLE_MUSIC_USER_TOKEN='...'
+freefm preview --source 'https://music.apple.com/us/library/playlist/<id>'
+
+# Public YouTube / YouTube Music playlist: Data API key
+export FREEFM_YOUTUBE_API_KEY='...'
+freefm preview --source 'https://music.youtube.com/playlist?list=<id>'
+# Private playlists may use an OAuth access token instead of the API key:
+export FREEFM_YOUTUBE_ACCESS_TOKEN='...'
+
+# Apple targets must be library playlists; YouTube targets require OAuth.
+freefm sync --source 'https://music.apple.com/us/playlist/<name>/pl.<source-id>' \
+  --target 'https://music.apple.com/us/library/playlist/<target-id>'
+freefm sync --source 'https://music.youtube.com/playlist?list=<source-id>' \
+  --target 'https://music.youtube.com/playlist?list=<target-id>'
+
+# Cross-provider transfer: search candidates, choose and confirm each mapping,
+# then run the same sync command. review never writes a remote playlist.
+freefm review --source 'https://open.spotify.com/playlist/<source-id>' \
+  --target 'https://music.youtube.com/playlist?list=<target-id>'
+
+# The same source can be passed through the TUI; the selected action keeps it.
+freefm tui --source 'https://open.spotify.com/playlist/<id>'
+
+# Read-only check of URL parsing and required environment variables
+freefm doctor --json --source 'https://open.spotify.com/playlist/<id>'
+# Read-only target check: credentials/scopes only; no provider request or write
+freefm doctor --json --target 'https://music.youtube.com/playlist?list=<target-id>'
+```
+
+External service credentials are read from the environment for one run and
+are never stored in `~/.freefm/`. Local files contain only explicit trusted
+mappings and NetEase sync state. Unsupported items, unavailable videos, and incomplete
+metadata are counted and skipped; FreeFM never downloads or substitutes media.
+`sync --source --target` copies only stable item ids within the same provider,
+reads the target first, deduplicates by remote id, and appends in bounded
+batches. Cross-provider transfers require `review --source --target`: search
+results are candidates only, and each mapping is persisted only after explicit
+confirmation. `sync` fails closed with `target_mapping_required` until every
+source track has a confirmed mapping; it never silently substitutes a recording.
+
+FreeFM does not implement provider OAuth login or refresh-token storage. This
+is deliberate: provider app registration, redirect handling, and refresh
+credentials are provider-specific and would enlarge the local secret surface.
+Obtain a short-lived token through the provider's own OAuth flow, export it
+for the one command, and use `doctor --target` to inspect the required
+permission contract. A missing or expired token fails closed before a write.
+The target write path rereads ownership and items after every append batch; if
+the reread cannot confirm the append, it returns `target_write_uncertain` and
+does not automatically retry.
+
 ### Ask an AI to install it
 
 ```text
@@ -109,6 +186,8 @@ CLI, never the TUI.
 | `freefm audit` | No | Re-check saved tracks: still_free / became_restricted / unavailable / unknown |
 | `freefm review` | Local only | Choose from up to three strict candidates and approve one; never writes remotely |
 | `freefm sync` | Append only | Add strictly verified free originals |
+| `freefm review --source ... --target ...` | Local only | Search candidates and explicitly confirm cross-provider mappings |
+| `freefm sync --source ... --target ...` | Append only | Copy stable ids or previously reviewed mappings after target ownership verification |
 | `freefm status` | No | Check session/account plus local sync metadata |
 | `freefm doctor` | No | Check permissions, state, and API shape |
 | `freefm tui` | Selected action | Guided terminal interface |

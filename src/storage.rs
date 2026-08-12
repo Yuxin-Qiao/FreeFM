@@ -38,6 +38,9 @@ impl Paths {
     pub(crate) fn trusted(&self) -> PathBuf {
         self.root.join("trusted.json")
     }
+    pub(crate) fn external_mappings(&self) -> PathBuf {
+        self.root.join("external-mappings.json")
+    }
 }
 
 pub(crate) struct SyncLock {
@@ -125,6 +128,61 @@ impl TrustedStore {
     }
 }
 
+/// Explicit source-to-external-target approvals. This is deliberately kept
+/// separate from the NetEase trusted store: an external mapping proves only
+/// that the user selected a target item, never that the item is free on
+/// NetEase.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct ExternalMapping {
+    #[serde(default)]
+    pub(crate) source_kind: String,
+    #[serde(default)]
+    pub(crate) source_playlist_id: String,
+    #[serde(default)]
+    pub(crate) source_storefront: Option<String>,
+    pub(crate) target_kind: String,
+    #[serde(default)]
+    pub(crate) target_playlist_id: String,
+    #[serde(default)]
+    pub(crate) target_storefront: Option<String>,
+    pub(crate) target_id: String,
+    pub(crate) approved_at: u64,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct ExternalMappingStore {
+    pub(crate) mappings: HashMap<String, ExternalMapping>,
+}
+
+impl ExternalMappingStore {
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn approve(
+        &mut self,
+        source_key: &str,
+        source_kind: &str,
+        source_playlist_id: &str,
+        source_storefront: Option<&str>,
+        target_kind: &str,
+        target_playlist_id: &str,
+        target_storefront: Option<&str>,
+        target_id: &str,
+    ) {
+        self.mappings.insert(
+            source_key.to_string(),
+            ExternalMapping {
+                source_kind: source_kind.to_string(),
+                source_playlist_id: source_playlist_id.to_string(),
+                source_storefront: source_storefront.map(str::to_string),
+                target_kind: target_kind.to_string(),
+                target_playlist_id: target_playlist_id.to_string(),
+                target_storefront: target_storefront.map(str::to_string),
+                target_id: target_id.to_string(),
+                approved_at: now_seconds(),
+            },
+        );
+    }
+}
+
 pub(crate) fn load_session(paths: &Paths) -> AppResult<Option<SessionFile>> {
     if !paths.session().exists() {
         return Ok(None);
@@ -169,6 +227,23 @@ pub(crate) fn load_trusted(paths: &Paths) -> AppResult<(TrustedStore, bool)> {
 
 pub(crate) fn save_trusted(paths: &Paths, store: &TrustedStore) -> AppResult<()> {
     write_private_json(&paths.trusted(), store)
+}
+
+pub(crate) fn load_external_mappings(paths: &Paths) -> AppResult<(ExternalMappingStore, bool)> {
+    if !paths.external_mappings().exists() {
+        return Ok((ExternalMappingStore::default(), false));
+    }
+    let bytes = fs::read(paths.external_mappings())?;
+    match serde_json::from_slice::<ExternalMappingStore>(&bytes) {
+        Ok(store) => Ok((store, false)),
+        // Fail closed to no external mappings rather than trusting malformed
+        // local data for a remote playlist write.
+        Err(_) => Ok((ExternalMappingStore::default(), true)),
+    }
+}
+
+pub(crate) fn save_external_mappings(paths: &Paths, store: &ExternalMappingStore) -> AppResult<()> {
+    write_private_json(&paths.external_mappings(), store)
 }
 
 pub(crate) fn restrict_dir(path: &Path) -> AppResult<()> {

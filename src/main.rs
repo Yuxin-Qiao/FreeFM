@@ -29,11 +29,12 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
         let tui_data_dir = Paths::from_cli(&cli).root;
-        match tui::choose(cli.json, Some(&tui_data_dir)) {
+        match tui::choose(cli.json, Some(&tui_data_dir), cli.source.clone()) {
             Ok(Some(choice)) => {
                 cli.command = choice.command.to_string();
                 cli.json = choice.json;
                 cli.quiet = choice.quiet;
+                cli.source = choice.source;
             }
             Ok(None) => return ExitCode::SUCCESS,
             Err(error) => {
@@ -52,6 +53,10 @@ fn main() -> ExitCode {
                 "auth" => "登录成功，会话已保存到本机。".to_string(),
                 "status" => status_human(&value),
                 "preview" => preview_human(&value),
+                "sync" if cli.target.is_some() => format!(
+                    "外部歌单同步完成：已追加 {} 首，目标歌单保持追加式幂等。",
+                    value["added_count"].as_u64().unwrap_or(0)
+                ),
                 "sync" => format!(
                     "同步完成：计划加入 {} 首，已验证歌单写入。",
                     value["would_add_ids"].as_array().map_or(0, Vec::len)
