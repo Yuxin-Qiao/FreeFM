@@ -20,9 +20,11 @@ Date: 2026-08-10 (Asia/Shanghai); current refresh: 2026-08-12
 
 ## Current audit refresh (2026-08-12)
 
-- The audited upstream baseline is `origin/main` at `7d9220d`; this refresh adds
-  local release-closeout and documentation changes, which remain subject to the
-  final commit and CI verification in this run.
+- The current audited commit is `e14670771777d7bae48be317221e449dd3f11c83`, and
+  `HEAD == origin/main` with a clean worktree. Main CI run `31564640529` and
+  CodeQL run `31564640565` completed successfully; the direct push bypassed the
+  repository's PR/required-check ruleset path, so no `ai-review` check is claimed
+  for this commit.
 - The current local release binary is 1,970,848 bytes with SHA-256
   `1458f5c5fab5ebb91cb7d83090c553ce981e108859c0a86080045e37a75648c4`.
 - The observation directory has 61 session records and 63 passive records;
@@ -250,7 +252,8 @@ LaunchAgent `com.freefm.validation`:
 
 Status: within the +7d observation window (gate 2026-08-16 23:21
 Asia/Shanghai). The LaunchAgent is loaded but not currently running; Hermes has
-no scheduled jobs. No sync or cron has been enabled. The observer uses the
+one paused legacy `freefm-hourly` job and no active jobs. No sync or active cron
+has been enabled. The observer uses the
 installed `/Users/yuxinqiao/.local/bin/freefm`; current checkout release-binary
 provenance still needs to be reconciled before release.
 

@@ -22,9 +22,11 @@ smoke 和 Hermes 创建后确认；同步 08-12 当前审计事实。G14 的问�
 
 ### 2026-08-12 当前审计刷新
 
-- 审计基线为 `origin/main` 的 `7d9220d`；本轮 closeout/文档改动尚在本地，
-  待本轮提交、推送和 CI 复核后才可称为工作区干净。此前最新 CI、CodeQL、
-  MSRV、RustSec、secrets、verification 和 coverage 均成功。
+- 当前 `main` 与 `origin/main` 均为 `e146707`，工作区干净；本轮主 CI
+  `31564640529` 和 CodeQL `31564640565` 全绿，覆盖 Linux/macOS、MSRV、RustSec、
+  secrets、verification 和 coverage。由于按用户要求直推 `main`，GitHub ruleset
+  记录了 PR/7 个 required checks 被 bypass；本轮没有 `ai-review` check，不能把它
+  记作规则集完整通过。
 - 当前本地门禁为 `cargo test --all-targets --locked`：87 个库测试通过、1 个
   ignored，主程序 5 个测试通过；Clippy、release build、format、diff-check、
   shell、Skill/WorkBuddy 检查均通过。
@@ -77,7 +79,7 @@ smoke 和 Hermes 创建后确认；同步 08-12 当前审计事实。G14 的问�
 | 编号 | 缺口 | 阻塞方 | 当前状态 |
 |---|---|---|---|
 | G1 | ~~工作区 4 个文件改动未提交~~（PR #14 已合并） | 无 | ✅ 完成 |
-| G14 | closeout 脚本发布缺陷：轻量 tag、产物/attestation 校验不足、Hermes 创建失败被吞掉、Release 下载后二进制未验证 | 无 | ✅ 本轮已修复，待本轮提交及 CI |
+| G14 | closeout 脚本发布缺陷：轻量 tag、产物/attestation 校验不足、Hermes 创建失败被吞掉、Release 下载后二进制未验证 | 无 | ✅ 已修复并由 `e146707` 的主 CI/CodeQL 验证 |
 | G2 | +7d 被动 FM / session 观察未完成 | 时间 | 门槛 2026-08-16 23:21:34 CST，还差约 5 天 |
 | G3 | session 服务端撤销 → fail-closed → 重新扫码 → 重启恢复未实跑 | 账号持有人扫码 | 未开始 |
 | G4 | 手工歌曲安全验证（L2）未实跑 | 账号持有人 1 分钟 | 未开始 |
