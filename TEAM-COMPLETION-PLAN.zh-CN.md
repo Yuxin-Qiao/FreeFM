@@ -1,6 +1,6 @@
 # FreeFM v0.1 待完成清单与发布执行计划
 
-更新：2026-08-10（Asia/Shanghai）
+更新：2026-08-12（Asia/Shanghai）
 适用仓库：`Yuxin-Qiao/FreeFM`
 目标：补齐长期验证、平台实机与供应链门禁，发布可复核的 `v0.1.0`，最后再开启无人值守同步。
 后续所有版本遵循 `RELEASING.md` 的版本发布规则；`v0.1.0` 仍按本计划执行。
@@ -42,15 +42,29 @@
 - 被动 FM：15 批、45 个盐化 track hash、15 个盐化 batch hash，全部唯一，无失败。
 - LaunchAgent `com.freefm.validation` 每小时只执行 `status` 和 `preview`，不执行
   `sync`、play、skip、trash 或 scrobble。
-- GitHub `main` 最新已提交版本 CI 绿色，但当前模块拆分、Codex、图标和文档改动尚未提交；旧 CI 不能作为当前工作区证明。
-- 尚无 `v0.1.0` tag、GitHub Release 或 Homebrew Formula。
+- 历史基线（2026-08-10）：GitHub `main` 当时 CI 绿色，但模块拆分、Codex、图标
+  和文档改动尚未提交；该旧 CI 不作为当前工作区证明。
+- 当前仍无 `v0.1.0` tag、GitHub Release 或已发布 Homebrew Formula；模板仍在
+  `scripts/formula/freefm.rb`。
+
+### 2026-08-12 当前审计刷新
+
+- 审计基线为 `origin/main` `7d9220d`；本轮发布收口脚本和事实文档改动将直接
+  提交、推送 `main`，不创建 PR。
+- 当前本地 release binary 为 1,970,848 bytes，SHA-256 为
+  `1458f5c5fab5ebb91cb7d83090c553ce981e108859c0a86080045e37a75648c4`。
+- 观察证据为 61 条 session、63 条 passive；LaunchAgent 已加载但未运行；Hermes
+  只有暂停的旧 `freefm-hourly`，没有 active job；周期 `sync` 仍未恢复。
+- 三个外部平台没有本机凭证，真实 Spotify/Apple Music/YouTube Music E2E 仍待
+  账号和 OAuth/token 条件；实现侧的复读、`canEdit` 和映射上下文已由 fake-server
+  测试覆盖。
 
 ### 时间门槛
 
 - +24h：2026-08-10 23:21:34（Asia/Shanghai）。
 - +7d：2026-08-16 23:21:34（Asia/Shanghai）。
-- +7d 全部门禁完成前，Hermes 不建立任何周期 `sync`（当前 `hermes cron list` 为空；
-  closeout 脚本最后一步才创建 `freefm-sync`，每 6 小时、`--no-agent`）。
+- +7d 全部门禁完成前，Hermes 不启用任何周期 `sync`（当前只有暂停的旧任务；
+  closeout 脚本最后一步才创建或恢复 `freefm-sync`，每 6 小时、`--no-agent`）。
 - +7d 到达后可直接运行 `scripts/release-closeout.sh`（验证时间门槛、移除观察
   LaunchAgent、本地全门禁、main 干净、打 tag 并等待 Release workflow、更新并验证
   Homebrew tap、恢复 Hermes no-agent cron）；每步 fail-closed。
@@ -208,6 +222,11 @@ No-Go：不得用跳过测试、降低 lint 或删除证据的方式“修绿”
 - [ ] 在空临时目录下载 Release，验证 checksum、attestation、解压文件清单和 `freefm --version`。
 - [ ] Release notes 明确：实验性未公开网易云接口、普通账号限定、candidate-only、append-only、零常驻、已验证平台与剩余限制。
 - [ ] 确认 Release 页面没有 session、账号数据或内部验证路径。
+
+当前状态（2026-08-12）：尚未创建 tag/Release；不得提前运行会推 tag 或创建
+Hermes 周期的 closeout。closeout 已加固为必需工具、独立 release 提交、精确
+产物清单、checksum、attestation、tarball 内容和下载后二进制校验，并在 Hermes
+创建失败或创建后无法确认时 fail-closed。
 
 通过标准：公开 Release 可从零下载、校验、运行；tag、二进制和 SBOM 指向同一源码。
 

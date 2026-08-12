@@ -29,5 +29,6 @@ class Freefm < Formula
 
   test do
     assert_match "FreeFM", shell_output("#{bin}/freefm --version")
+    assert_match "FreeFM", shell_output("#{bin}/freefm --help")
   end
 end

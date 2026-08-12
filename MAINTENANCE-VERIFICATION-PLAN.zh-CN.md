@@ -1,13 +1,15 @@
 # FreeFM 维修验证计划（v0.1 发布收口）
 
-更新：2026-08-11 修订 2（Asia/Shanghai）
+更新：2026-08-12 修订 3（Asia/Shanghai）
 适用仓库：`Yuxin-Qiao/FreeFM`（本地 `free-music-agent`）
 目标：在 `v0.1.0` 发布前，把全部剩余缺口逐项验证、修复并留下脱敏证据；
 只有本计划所有 Go 门槛通过，才允许创建 tag、发布 Release、更新 Homebrew、
 恢复无人值守同步。
 
-修订 2 新增：对 `scripts/release-closeout.sh` 的逐行复核结论与修复任务
-（G14，见 2.5 节）；G1 标记完成；更新 08-11 每日聚合证据。
+修订 3：完成 `scripts/release-closeout.sh` 的 fail-closed 加固：必需工具、
+独立 release 提交、tarball/ZIP 精确清单、checksum、attestation、下载后二进制
+smoke 和 Hermes 创建后确认；同步 08-12 当前审计事实。G14 的问题复盘仍保留在
+2.5 节，作为变更依据。
 
 本计划与 `TEAM-COMPLETION-PLAN.zh-CN.md` 配套：后者是总纲，本文是
 “从 2026-08-11 到今天”的逐日执行手册。所有步骤 fail-closed：
@@ -16,9 +18,28 @@
 
 ---
 
-## 0. 审计结论（2026-08-11 复核）
+## 0. 审计结论（2026-08-12 当前刷新）
 
-### 已达成，禁止重做或回退
+### 2026-08-12 当前审计刷新
+
+- 审计基线为 `origin/main` 的 `7d9220d`；本轮 closeout/文档改动尚在本地，
+  待本轮提交、推送和 CI 复核后才可称为工作区干净。此前最新 CI、CodeQL、
+  MSRV、RustSec、secrets、verification 和 coverage 均成功。
+- 当前本地门禁为 `cargo test --all-targets --locked`：87 个库测试通过、1 个
+  ignored，主程序 5 个测试通过；Clippy、release build、format、diff-check、
+  shell、Skill/WorkBuddy 检查均通过。
+- 当前 `cargo audit` 扫描 188 个依赖、0 漏洞；gitleaks 扫描约 1.69 GB、0
+  泄漏。当前 release binary 为 1,970,848 bytes，SHA-256 为
+  `1458f5c5fab5ebb91cb7d83090c553ce981e108859c0a86080045e37a75648c4`。
+- 本机没有 Spotify、Apple Music 或 YouTube 外部凭证；三平台真实 E2E 仍未声明
+  完成。当前仍无 `v0.1.0` tag、GitHub Release 或已发布 Homebrew Formula。
+- 观察目录当前为 61 条 session、63 条 passive 记录；LaunchAgent 已加载但当前
+  不运行。Hermes 当前有一个暂停的旧 `freefm-hourly` 任务，但没有 active job；
+  观察脚本实际使用已安装的
+  `$HOME/.local/bin/freefm`，与当前 checkout 的 release binary provenance 尚需
+  在最终发布前对齐。
+
+### 历史基线（截至 2026-08-11；不覆盖上面的当前刷新）
 
 - 产品运行时：native Rust CLI/TUI，`auth / preview / sync / audit / review /
   status / doctor / tui / version` 九个命令；`preview`/`audit` 只读，
@@ -39,8 +60,8 @@
   已记录于 `V01-VALIDATION.md` 与 `~/.freefm-validation/fmqueue-experiment.jsonl`。
 - 供应链：CI 和 Release workflow 已固定完整 Action SHA；Release 含
   attestation（`attest-build-provenance`）与 CycloneDX SBOM job。
-- Hermes：`cron list` 为空（正确保持暂停）；`~/.hermes/scripts/freefm-sync.sh`
-  已安装且与仓库副本一致。
+- Hermes：当前只有暂停的旧 `freefm-hourly`，没有 active job（正确保持周期同步
+  暂停）；`~/.hermes/scripts/freefm-sync.sh` 已安装且与仓库副本一致。
 - GitHub：`main` = `8963d0f`（PR #14 合并后 CI 全绿），本地工作区干净；
   `homebrew-tap` 仓库已建（HEAD `07ca41a`），Formula 模板
   `scripts/formula/freefm.rb` 就绪。
@@ -56,19 +77,19 @@
 | 编号 | 缺口 | 阻塞方 | 当前状态 |
 |---|---|---|---|
 | G1 | ~~工作区 4 个文件改动未提交~~（PR #14 已合并） | 无 | ✅ 完成 |
-| G14 | closeout 脚本 4 处发布缺陷：轻量 tag、缺 SBOM/WorkBuddy 产物校验、`brew audit` 缺 `--online`、`gh run list --branch` 对 tag 触发不可靠 | 无 | 已定位（见 2.5），未修复 |
+| G14 | closeout 脚本发布缺陷：轻量 tag、产物/attestation 校验不足、Hermes 创建失败被吞掉、Release 下载后二进制未验证 | 无 | ✅ 本轮已修复，待本轮提交及 CI |
 | G2 | +7d 被动 FM / session 观察未完成 | 时间 | 门槛 2026-08-16 23:21:34 CST，还差约 5 天 |
 | G3 | session 服务端撤销 → fail-closed → 重新扫码 → 重启恢复未实跑 | 账号持有人扫码 | 未开始 |
 | G4 | 手工歌曲安全验证（L2）未实跑 | 账号持有人 1 分钟 | 未开始 |
 | G5 | `v0.1.0` tag / GitHub Release / checksum / SBOM / attestation 下载验证 | 先 G1+G2 | 未开始 |
 | G6 | Homebrew Formula 发布与 tap/install/test/audit | 先 G5 | 模板就绪未发布 |
-| G7 | Codex Skill 实机：cc-switch catalog 问题、`~/.codex/skills` 安装、`codex sandbox -- freefm sync --quiet` | 本机环境 | 未开始 |
-| G8 | WorkBuddy 真实客户端导入 | 已登录客户端 | 仅本地 ZIP 兼容 |
+| G7 | Codex Skill 实机：cc-switch catalog 问题、`~/.codex/skills` 安装、`codex sandbox -- freefm sync --quiet` | 本机环境 | Skill 已安装；sandbox 路径未实跑 |
+| G8 | WorkBuddy 真实客户端导入 | 已登录客户端 | 客户端导入已记录；正式 Release ZIP checksum/attestation/只读调用未验证 |
 | G9 | OpenClaw/Hermes 固定 tag 重装、ClawHub stable channel | 先 G5 | 未开始 |
 | G10 | Hermes `freefm-sync`（每 6h、`--no-agent`）创建与 24h 正式周期观察 | 先 G2+G5 | closeout 最后一步 |
 | G11 | trusted mapping 真实“重命中”（同一原曲再次出现） | 自然 FM 轮转 | fixture 已覆盖，真实未发生 |
-| G12 | PR #13（ai-review-bot）去留决策 | 团队 | OPEN，非发布内容 |
-| G13 | README/文档最终一致性复核（30 秒首屏、中英一致、平台状态如实） | 无 | 未做最终轮 |
+| G12 | PR #13（ai-review-bot）去留决策 | 团队 | ✅ PR #13 已合并；当前仍需确认 main 直推 commit 的 ai-review check 缺口 |
+| G13 | README/文档最终一致性复核（30 秒首屏、中英一致、平台状态如实） | 无 | 本轮已刷新事实；Release 前仍需最终复核 |
 
 ### 已知风险（如实记录，不掩盖）
 
@@ -120,8 +141,8 @@ track 去重数仍在增长或如实记录停滞、LaunchAgent 只读。
 
 ## 2. G1 工作区收口（立即执行，1-2 小时）
 
-状态：✅ 已完成（PR #14 已合并，`main` = `8963d0f`）。本节保留作复核依据，
-禁止重复提交。
+状态：✅ 历史基线已完成（PR #14 已合并，旧 `main` = `8963d0f`）。本节保留作
+复核依据；本轮 closeout/文档变更按用户要求直接推送 `main`，不创建 PR。
 
 负责人：Rust owner；复核：Release owner。
 
@@ -142,10 +163,9 @@ git add .gitignore TEAM-COMPLETION-PLAN.zh-CN.md V01-VALIDATION.md scripts/relea
 3. 逐文件复核 diff：closeout 脚本新增的 `sh -n` 循环、WorkBuddy 打包、
    Hermes helper 安装逻辑不改变任何门禁顺序；计划文档只改频率表述；
    V01 只追加 Hermes 空 cron 备注。
-4. 提交（消息建议：`chore: closeout script hardening and plan refresh`），
-   推送到 `codex/release-hardening`，开 PR 合并到 `main`；等 CI 全绿
-   （macOS/Linux/MSRV/RustSec/secrets/打包）。
-5. 合并后把本地 `main` 快进到合并 commit，确认工作区干净。
+4. 显式提交（消息建议：`chore: closeout script hardening and plan refresh`），
+   直接推送当前 `main`；等 CI 全绿（macOS/Linux/MSRV/RustSec/secrets/打包）。
+5. 确认本地 `main` 与远端 commit 一致、工作区干净。
 
 通过标准：远端 `main` 包含该 commit、CI 全绿、本地无未提交 diff。
 No-Go：CI 任一 job 失败且与本批改动相关 → 修复重跑，禁止“修 tag 绕过”。

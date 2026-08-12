@@ -7,6 +7,7 @@ echo "=== FreeFM Release Smoke Test ==="
 echo "[1/4] Validating shell script syntax..."
 sh -n scripts/install.sh
 sh -n skills/freefm/scripts/freefm-sync.sh
+sh -n scripts/release-closeout.sh
 sh -n scripts/package-workbuddy.sh
 echo "  ✓ Script syntax valid."
 
@@ -145,9 +146,16 @@ echo "  ✓ All 4 installer fail-closed & smoke test scenarios passed."
 # 4. Verify WorkBuddy package generation
 echo "[4/4] Verifying WorkBuddy release artifact packaging..."
 scripts/package-workbuddy.sh target/freefm-workbuddy.zip >/dev/null
-unzip -l target/freefm-workbuddy.zip | grep -q 'freefm/SKILL.md'
-unzip -l target/freefm-workbuddy.zip | grep -q 'freefm/scripts/freefm-sync.sh'
-unzip -l target/freefm-workbuddy.zip | grep -q 'freefm/scripts/freefm-audit.sh'
+zip_actual=$(mktemp "${TMPDIR:-/tmp}/freefm-smoke-zip-list.XXXXXX")
+zip_expected=$(mktemp "${TMPDIR:-/tmp}/freefm-smoke-zip-expected.XXXXXX")
+trap 'rm -f "$zip_actual" "$zip_expected"' EXIT HUP INT TERM
+unzip -Z1 target/freefm-workbuddy.zip | grep -v '/$' | sort >"$zip_actual"
+printf '%s\n' \
+  freefm/SKILL.md \
+  freefm/scripts/freefm-audit.sh \
+  freefm/scripts/freefm-sync.sh \
+  | sort >"$zip_expected"
+diff -u "$zip_expected" "$zip_actual"
 echo "  ✓ WorkBuddy package verified."
 
 echo ""

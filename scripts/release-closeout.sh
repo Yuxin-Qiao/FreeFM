@@ -12,7 +12,151 @@ version=${FREEFM_VERSION:-v0.1.0}
 tap_dir=${FREEFM_TAP_DIR:-""}
 hermes_job=${FREEFM_HERMES_JOB:-freefm-sync}
 
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "缺少必需命令：$1；终止发布收口" >&2
+    exit 1
+  }
+}
+
+for command in \
+  gh jq unzip zip tar awk grep sed sort diff cargo cargo-audit gitleaks hermes \
+  git date cat mktemp sleep head cp mkdir chmod rm dirname launchctl id uname brew; do
+  require_command "$command"
+done
+
+if command -v shasum >/dev/null 2>&1; then
+  sha256() { shasum -a 256 "$1" | awk '{print $1}'; }
+else
+  require_command sha256sum
+  sha256() { sha256sum "$1" | awk '{print $1}'; }
+fi
+
+verify_attestation() {
+  artifact=$1
+  gh attestation verify "$artifact" \
+    --repo Yuxin-Qiao/FreeFM \
+    --signer-workflow Yuxin-Qiao/FreeFM/.github/workflows/release.yml \
+    --source-ref "refs/tags/$version" >/dev/null
+}
+
+verify_tarball_contents() {
+  tarball=$1
+  name=$2
+  actual=$(mktemp "${TMPDIR:-/tmp}/freefm-tar-list.XXXXXX")
+  expected=$(mktemp "${TMPDIR:-/tmp}/freefm-tar-expected.XXXXXX")
+  tar -tzf "$tarball" \
+    | sed "s#^${name}/##" \
+    | sed 's#/$##' \
+    | grep -v '^$' \
+    | sort >"$actual"
+  printf '%s\n' freefm LICENSE README.md README.zh-CN.md | sort >"$expected"
+  if ! diff -u "$expected" "$actual"; then
+    echo "${tarball} 内含非允许文件或缺少必要文件，终止" >&2
+    rm -f "$actual" "$expected"
+    exit 1
+  fi
+  rm -f "$actual" "$expected"
+}
+
+verify_workbuddy_contents() {
+  zip_file=$1
+  actual=$(mktemp "${TMPDIR:-/tmp}/freefm-zip-list.XXXXXX")
+  expected=$(mktemp "${TMPDIR:-/tmp}/freefm-zip-expected.XXXXXX")
+  unzip -Z1 "$zip_file" | grep -v '/$' | sort >"$actual"
+  printf '%s\n' \
+    freefm/SKILL.md \
+    freefm/scripts/freefm-audit.sh \
+    freefm/scripts/freefm-sync.sh \
+    | sort >"$expected"
+  if ! diff -u "$expected" "$actual"; then
+    echo "${zip_file} 内含非允许文件或缺少必要文件，终止" >&2
+    rm -f "$actual" "$expected"
+    exit 1
+  fi
+  rm -f "$actual" "$expected"
+}
+
+find_hermes_job() {
+  file=$1
+  awk -v wanted="$hermes_job" '
+    /^[[:space:]]+[[:alnum:]_.-]+[[:space:]]+\[/ {
+      job_id = $1
+      job_state = $2
+      sub(/^\[/, "", job_state)
+      sub(/\]$/, "", job_state)
+    }
+    /^[[:space:]]+Name:/ {
+      job_name = $0
+      sub(/^[[:space:]]*Name:[[:space:]]*/, "", job_name)
+      if (job_name == wanted) {
+        print job_id "\t" job_state
+        exit
+      }
+    }
+  ' "$file"
+}
+
+verify_hermes_job() {
+  file=$1
+  allow_paused=${2:-0}
+  awk -v wanted="$hermes_job" -v allow_paused="$allow_paused" '
+    function finish() {
+      state_ok = (job_state == "active") || (allow_paused == "1" && job_state == "paused")
+      if (in_job && job_name == wanted && state_ok \
+          && schedule == "0 */6 * * *" && no_agent == 1) {
+        valid = 1
+      }
+    }
+    /^[[:space:]]+[[:alnum:]_.-]+[[:space:]]+\[/ {
+      finish()
+      in_job = 1
+      job_name = ""
+      schedule = ""
+      no_agent = 0
+      job_state = $2
+      sub(/^\[/, "", job_state)
+      sub(/\]$/, "", job_state)
+      next
+    }
+    in_job && /^[[:space:]]+Name:/ {
+      job_name = $0
+      sub(/^[[:space:]]*Name:[[:space:]]*/, "", job_name)
+      next
+    }
+    in_job && /^[[:space:]]+Schedule:/ {
+      schedule = $0
+      sub(/^[[:space:]]*Schedule:[[:space:]]*/, "", schedule)
+      next
+    }
+    in_job && /^[[:space:]]+Mode:[[:space:]]+no-agent[[:space:]]+\(script/ {
+      no_agent = 1
+    }
+    END {
+      finish()
+      exit(valid ? 0 : 1)
+    }
+  ' "$file"
+}
+
 echo "=== FreeFM $version release closeout ==="
+
+cd "$repo_dir"
+
+version_number=${version#v}
+cargo_version=$(awk -F '"' '$1 ~ /^version[[:space:]]*=/ { print $2; exit }' Cargo.toml)
+if [ "$cargo_version" != "$version_number" ]; then
+  echo "Cargo.toml 版本 ${cargo_version} 与发布版本 ${version_number} 不一致" >&2
+  exit 1
+fi
+if [ "$(git log -1 --format=%s)" != "release: $version" ]; then
+  echo "发布前必须先创建独立的 release: $version 提交" >&2
+  exit 1
+fi
+if [ -n "$(git status --porcelain)" ]; then
+  echo "工作区不干净，先提交或还原再发布" >&2
+  exit 1
+fi
 
 if ! command -v gh >/dev/null 2>&1; then
   echo "gh 未安装；请先安装并 gh auth login" >&2
@@ -48,8 +192,6 @@ if launchctl print "gui/$(id -u)/com.freefm.validation" >/dev/null 2>&1; then
 fi
 echo "[2/8] 观察 LaunchAgent 已停止并移除。"
 
-cd "$repo_dir"
-
 # 3. Local release gates.
 echo "[3/8] 本地门禁..."
 cargo fmt --all -- --check
@@ -61,14 +203,8 @@ for f in scripts/*.sh automation/hermes/*.sh automation/launchd/*.sh skills/free
   sh -n "$f"
 done
 scripts/package-workbuddy.sh target/freefm-workbuddy.zip
-if command -v gitleaks >/dev/null 2>&1; then
-  gitleaks dir . --no-banner --redact
-fi
-if cargo audit --no-fetch >/dev/null 2>&1; then
-  :
-else
-  cargo audit
-fi
+gitleaks dir . --no-banner --redact --timeout 300
+cargo audit
 echo "[3/8] 本地门禁通过。"
 
 # 4. Main must be clean and green.
@@ -141,24 +277,46 @@ done
 for plat in darwin-arm64 linux-x86_64 linux-arm64; do
   tarball="$art_dir/freefm-$version-$plat.tar.gz"
   expected=$(awk '{print $1}' "$tarball.sha256")
-  actual=$(shasum -a 256 "$tarball" | awk '{print $1}')
+  actual=$(sha256 "$tarball")
   if [ "$expected" != "$actual" ]; then
     echo "$plat checksum 与 sidecar 不一致，终止" >&2
     exit 1
   fi
+  verify_tarball_contents "$tarball" "freefm-$version-$plat"
+  verify_attestation "$tarball"
+  verify_attestation "$tarball.sha256"
 done
 if ! jq -e '.bomFormat == "CycloneDX"' "$art_dir/freefm-sbom.cdx.json" >/dev/null 2>&1; then
   echo "SBOM 不是有效 CycloneDX JSON，终止" >&2
   exit 1
 fi
-if ! unzip -l "$art_dir/freefm-workbuddy.zip" 2>/dev/null | grep -q "SKILL.md"; then
-  echo "WorkBuddy ZIP 缺少 SKILL.md，终止" >&2
+verify_workbuddy_contents "$art_dir/freefm-workbuddy.zip"
+verify_attestation "$art_dir/freefm-workbuddy.zip"
+
+case "$(uname -s):$(uname -m)" in
+  Darwin:arm64) runtime_plat=darwin-arm64 ;;
+  Linux:x86_64) runtime_plat=linux-x86_64 ;;
+  Linux:aarch64|Linux:arm64) runtime_plat=linux-arm64 ;;
+  *)
+    echo "当前平台无法选择已发布的 native smoke binary：$(uname -s):$(uname -m)" >&2
+    exit 1
+    ;;
+esac
+runtime_name="freefm-$version-$runtime_plat"
+runtime_dir=$(mktemp -d "${TMPDIR:-/tmp}/freefm-runtime.XXXXXX")
+tar -xzf "$art_dir/$runtime_name.tar.gz" -C "$runtime_dir"
+runtime_output=$("$runtime_dir/$runtime_name/freefm" --version)
+if [ "$runtime_output" != "FreeFM $version_number" ]; then
+  echo "下载的 $runtime_plat binary 版本校验失败：$runtime_output" >&2
   exit 1
 fi
 
 # C5: release notes must cover the required disclaimers; append them if missing.
 notes_file=$(mktemp "${TMPDIR:-/tmp}/freefm-notes.XXXXXX")
-gh release view "$version" --repo Yuxin-Qiao/FreeFM --json body --jq .body >"$notes_file" 2>/dev/null || true
+if ! gh release view "$version" --repo Yuxin-Qiao/FreeFM --json body --jq .body >"$notes_file" 2>/dev/null; then
+  echo "无法读取 GitHub Release ${version}，终止" >&2
+  exit 1
+fi
 need_edit=0
 for kw in experimental undocumented append-only candidate resident; do
   if ! grep -qi "$kw" "$notes_file"; then
@@ -182,9 +340,9 @@ EOF
   echo "已补充 Release notes 免责声明。"
 fi
 
-darwin_sha=$(shasum -a 256 "$art_dir/freefm-$version-darwin-arm64.tar.gz" 2>/dev/null | awk '{print $1}')
-linux_x86_sha=$(shasum -a 256 "$art_dir/freefm-$version-linux-x86_64.tar.gz" 2>/dev/null | awk '{print $1}')
-linux_arm_sha=$(shasum -a 256 "$art_dir/freefm-$version-linux-arm64.tar.gz" 2>/dev/null | awk '{print $1}')
+darwin_sha=$(sha256 "$art_dir/freefm-$version-darwin-arm64.tar.gz" 2>/dev/null)
+linux_x86_sha=$(sha256 "$art_dir/freefm-$version-linux-x86_64.tar.gz" 2>/dev/null)
+linux_arm_sha=$(sha256 "$art_dir/freefm-$version-linux-arm64.tar.gz" 2>/dev/null)
 if [ -z "$darwin_sha" ] || [ -z "$linux_x86_sha" ] || [ -z "$linux_arm_sha" ]; then
   echo "Release 产物不完整，请检查下载目录 $art_dir" >&2
   exit 1
@@ -218,15 +376,50 @@ brew audit --strict --online Yuxin-Qiao/tap/freefm
 echo "[7/8] brew tap/install/test/audit 全部通过。"
 
 # 8. Un-pause the deterministic Hermes cron (no-agent, every 6h).
-if command -v hermes >/dev/null 2>&1; then
-  mkdir -p "$HOME/.hermes/scripts"
-  cp "$repo_dir/automation/hermes/freefm-sync.sh" "$HOME/.hermes/scripts/freefm-sync.sh"
-  chmod 700 "$HOME/.hermes/scripts/freefm-sync.sh"
-  hermes cron create "0 */6 * * *" --name "$hermes_job" --script freefm-sync.sh --no-agent || true
-  echo "[8/8] Hermes $hermes_job 已启用（0 */6 * * *，--no-agent）。"
+mkdir -p "$HOME/.hermes/scripts"
+cp "$repo_dir/automation/hermes/freefm-sync.sh" "$HOME/.hermes/scripts/freefm-sync.sh"
+chmod 700 "$HOME/.hermes/scripts/freefm-sync.sh"
+hermes_jobs=$(mktemp "${TMPDIR:-/tmp}/freefm-hermes-jobs.XXXXXX")
+hermes cron list --all >"$hermes_jobs"
+hermes_existing=$(find_hermes_job "$hermes_jobs")
+if [ -n "$hermes_existing" ]; then
+  if ! verify_hermes_job "$hermes_jobs" 1; then
+    echo "Hermes $hermes_job 已存在但不是预期的 0 */6 * * * no-agent 任务，终止" >&2
+    rm -f "$hermes_jobs"
+    exit 1
+  fi
+  hermes_job_id=$(printf '%s\n' "$hermes_existing" | awk -F '\t' '{print $1}')
+  hermes_job_state=$(printf '%s\n' "$hermes_existing" | awk -F '\t' '{print $2}')
+  case "$hermes_job_state" in
+    paused)
+      if ! hermes cron resume "$hermes_job_id"; then
+        echo "Hermes $hermes_job 已存在但恢复失败，保持发布收口失败" >&2
+        rm -f "$hermes_jobs"
+        exit 1
+      fi
+      ;;
+    active) ;;
+    *)
+      echo "Hermes $hermes_job 状态为 ${hermes_job_state}，不是可安全恢复的 active/paused，终止" >&2
+      rm -f "$hermes_jobs"
+      exit 1
+      ;;
+  esac
 else
-  echo "[8/8] 未检测到 hermes CLI；请人工把 automation/hermes/freefm-sync.sh 复制到 ~/.hermes/scripts/ 并启用：hermes cron create \"0 */6 * * *\" --name $hermes_job --script freefm-sync.sh --no-agent"
+  if ! hermes cron create "0 */6 * * *" --name "$hermes_job" --script freefm-sync.sh --no-agent; then
+    echo "Hermes $hermes_job 创建失败，保持发布收口失败" >&2
+    rm -f "$hermes_jobs"
+    exit 1
+  fi
 fi
+hermes cron list --all >"$hermes_jobs"
+if ! verify_hermes_job "$hermes_jobs"; then
+  echo "Hermes $hermes_job 创建后无法在任务列表确认，终止" >&2
+  rm -f "$hermes_jobs"
+  exit 1
+fi
+rm -f "$hermes_jobs"
+echo "[8/8] Hermes $hermes_job 已启用（0 */6 * * *，--no-agent）。"
 
 echo
 echo "=== FreeFM $version 发布收口完成 ==="

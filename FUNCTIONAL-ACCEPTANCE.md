@@ -51,7 +51,7 @@ native Rust CLI with no LLM, daemon, Node, Python, or Docker.
 | A-25 | State/session/trusted corruption fail closed without data loss | fixture | PASS | `corrupted_state_recovers_to_empty_state`, `corrupted_session_is_rejected_without_recovery`, `trusted_store_roundtrip_and_corrupt_recovery` |
 | A-26 | FM passive fetch advances official App queue? | live | PASS (n=2 evidence, not proof) | two human runs 2026-08-10, both `official_queue_advanced=n`; recorded in V01; 7-day observation continues |
 | A-27 | 7-day passive observation | live | BLOCKED_EXTERNAL | until 2026-08-16 23:21 Asia/Shanghai; no fabricated results |
-| A-28 | Resource profile unchanged by audit/review/trusted (size, cold start, RSS, state size, no daemon/db) | static | PASS | numbers in section below; binary grew 1.6% (1,854,240 -> 1,887,456 B), no new deps |
+| A-28 | Resource profile unchanged by audit/review/trusted (size, cold start, RSS, state size, no daemon/db) | static | PARTIAL | historical release numbers remain below; current `target/release/freefm` is 1,970,848 B, SHA-256 `1458f5c5fab5ebb91cb7d83090c553ce981e108859c0a86080045e37a75648c4`; final release artifact measurement pending |
 | A-29 | README claims match implementation (long-lived = detect+report, not auto-repair; candidate = review/approve, not auto-swap; audit in automation) | static | PASS | README/zh-CN updated this batch; audit job documented; no overclaim remains |
 | A-30 | Homebrew/WorkBuddy import/other platforms | external | PARTIAL (WorkBuddy PASS; Homebrew pending release) | WorkBuddy 5.3.11 local client imported `freefm` on 2026-08-12 after built-in security scan; Homebrew remains gated on v0.1.0 release |
 
@@ -67,7 +67,7 @@ native Rust CLI with no LLM, daemon, Node, Python, or Docker.
 | any | parse/usage error | 2 | error text |
 | auth | QR confirmed | 0 | success line |
 
-## Resource numbers (this batch, release binary, arm64)
+## Historical resource numbers (2026-08-10 baseline, release binary, arm64)
 
 - binary: 1,887,456 B (1.80 MB); SHA-256 `acd7f9a859e2a151f39bfb48ccfd16b9f6483e48e32328659bd7dcf17ba33575`
 - `--version` cold start: 0.11 s in sandbox; 0.01 s measured earlier on bare metal (V01), peak RSS 2,129,920 B (V01; `/usr/bin/time -l` blocked in this sandbox)
@@ -77,9 +77,12 @@ native Rust CLI with no LLM, daemon, Node, Python, or Docker.
 
 ## P0 / P1 / P2 status
 
-- P0: no FAIL found in anything verifiable offline; live chain pending user (L1-L3).
+- P0: no FAIL found in anything verifiable offline; live chain pending user (L2),
+  revocation/re-auth, and the +7d gate. Release remains No-Go until all gates close.
 - P1: review revoke/replace gap found and fixed this batch (A-21); audit automation gap found and fixed this batch (A-16); both covered by new regression tests and CI.
-- P2 (not blocking v0.1): Windows, Homebrew tap, TUI polish, auto-repair (intentionally absent in v0.1); WorkBuddy signed client import is verified, while marketplace publication remains outside this gate.
+- P2 (not blocking v0.1): Windows, TUI polish, auto-repair (intentionally absent in
+  v0.1), and marketplace publication. WorkBuddy client import is verified for a local
+  package; formal Release ZIP checksum/attestation and read-only invocation remain pending.
 
 ## BLOCKED_USER_ACTION steps
 

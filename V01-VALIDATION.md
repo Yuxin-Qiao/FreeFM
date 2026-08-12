@@ -1,8 +1,8 @@
 # FreeFM v0.1 validation record
 
-Date: 2026-08-10 (Asia/Shanghai)
+Date: 2026-08-10 (Asia/Shanghai); current refresh: 2026-08-12
 
-## Release gate
+## Historical release gate (2026-08-10 baseline)
 
 - `cargo fmt --all -- --check`: passed.
 - `cargo test --all-targets`: 38 passed (33 lib + 1 ignored child-process lock helper + 4 TUI).
@@ -17,6 +17,24 @@ Date: 2026-08-10 (Asia/Shanghai)
 - workspace refresh 2026-08-11: `cargo test --all-targets --locked` 45 lib + 4 TUI
   passed (1 ignored child-process lock helper); fmt/clippy/`git diff --check` clean;
   local release binary 1,887,472 bytes (final SHA recorded at the +7d closeout).
+
+## Current audit refresh (2026-08-12)
+
+- The audited upstream baseline is `origin/main` at `7d9220d`; this refresh adds
+  local release-closeout and documentation changes, which remain subject to the
+  final commit and CI verification in this run.
+- The current local release binary is 1,970,848 bytes with SHA-256
+  `1458f5c5fab5ebb91cb7d83090c553ce981e108859c0a86080045e37a75648c4`.
+- The observation directory has 61 session records and 63 passive records;
+  all session records are authenticated ordinary-account samples with no failure
+  records. The LaunchAgent is loaded but not running; Hermes has one paused
+  legacy `freefm-hourly` job and no active jobs.
+- There is no `v0.1.0` tag, GitHub Release, Homebrew Formula publication, or
+  real Spotify/Apple Music/YouTube Music credential available on this machine.
+- External-platform transfer hardening is fixture-verified only. The current
+  checkout performs post-append rereads, requires Apple `canEdit == true`, and
+  binds mappings to both playlist and storefront context; none of these claims
+  is a real-account E2E claim.
 
 All automated tests use the in-process fake protocol seam and redacted
 fixtures. They never contact NetEase. Coverage includes strict entitlement
@@ -106,7 +124,10 @@ process restarts. The FM-queue experiment (two human runs, both
 recorded separately; the 7-day observation gate remains
 (2026-08-16 23:21:34 Asia/Shanghai).
 
-This confirms that passive polling causes NetEase to return fresh recommendation batches without requiring playback, skip, or scrobble actions. The LaunchAgent `com.freefm.validation` continues running toward the 7-day observation gate (2026-08-16 23:21:34 Asia/Shanghai).
+This historical snapshot confirmed that passive polling caused NetEase to return
+fresh recommendation batches without requiring playback, skip, or scrobble
+actions. The current LaunchAgent state is recorded in the 2026-08-12 refresh
+above.
 
 ## Same-recording identity probe
 
@@ -125,11 +146,14 @@ successfully. Its persisted run record states `Mode: no_agent (script)` and
 `Status: silent (empty output)`, so that execution used no Agent/LLM and
 produced no routine output.
 
-As of 2026-08-11 the installed Hermes (v0.20.0) has no scheduled jobs
-(`hermes cron list` is empty), which keeps periodic sync fully paused. The
+As of 2026-08-12 the installed Hermes (v0.20.0) has one paused legacy
+`freefm-hourly` job and no active jobs (`hermes cron status` reports no active
+jobs), which keeps periodic sync fully paused. The
 closeout script installs `automation/hermes/freefm-sync.sh` into
-`~/.hermes/scripts/` and creates `freefm-sync` (every 6 h, `--no-agent`) as its
-final step, after all release gates pass.
+`~/.hermes/scripts/` and creates or resumes `freefm-sync` (every 6 h,
+`--no-agent`) as its final step, after all release gates pass. If that named job
+already exists, the closeout reuses it only when it is the exact active/paused
+no-agent job with the expected schedule; otherwise it fails closed.
 
 OpenClaw 2026.8.1 installed the skill from both a local package and
 `git:Yuxin-Qiao/FreeFM@main` in isolated state/workspace directories. On 2026-08-10 an
@@ -201,19 +225,19 @@ Source: `~/.freefm-validation/`; only timestamps, counts, booleans, and
 failure types are recorded. No cookies, account identifiers, song IDs/titles,
 or URLs are stored in this document.
 
-Session (`session.jsonl`, n=50):
+Session (`session.jsonl`, n=61):
 
-- first sample 2026-08-09T15:21:34Z, last sample 2026-08-11T16:27:16Z;
-- 50/50 `ok`, 50/50 `authenticated`, `login_required` count = 0;
+- first sample 2026-08-09T15:21:34Z, last sample 2026-08-12T03:27:55Z;
+- 61/61 `ok`, 61/61 `authenticated`, `login_required` count = 0;
 - unique `account_vip_type` values = `[0]` (ordinary account confirmed on
   every sample);
 - failure types: none.
 
-Passive FM (`passive.jsonl`, n=52):
+Passive FM (`passive.jsonl`, n=63):
 
 - first sample 2026-08-09T14:28:33Z (two pre-LaunchAgent manual samples),
-  hourly sampling from 15:21:37Z, last sample 2026-08-11T16:27:19Z;
-- 52 unique salted batch hashes, 139 unique salted track hashes, zero
+  hourly sampling from 15:21:37Z, last sample 2026-08-12T03:27:58Z;
+- 63 unique salted batch hashes, 165 unique salted track hashes, zero
   failures; batches continue to contain new tracks;
 - HTTP requests per fetch: 11-17 (mode 15), consistent with one preview.
 
@@ -221,11 +245,24 @@ LaunchAgent `com.freefm.validation`:
 
 - loaded, hourly, last exit 0; script contains only `status` and `preview`
   invocations; keyword scan for sync/play/skip/trash/scrobble found none;
-- evidence size bounded: session.jsonl 8,600 B + passive.jsonl 26,876 B
-  (total ~34.7 KB after ~59 h of sampling).
+- evidence size bounded: session.jsonl 10,492 B + passive.jsonl 32,435 B
+  (total ~42.9 KB at the latest local refresh; `failures.jsonl` is absent).
 
 Status: within the +7d observation window (gate 2026-08-16 23:21
-Asia/Shanghai). No sync or cron has been enabled.
+Asia/Shanghai). The LaunchAgent is loaded but not currently running; Hermes has
+no scheduled jobs. No sync or cron has been enabled. The observer uses the
+installed `/Users/yuxinqiao/.local/bin/freefm`; current checkout release-binary
+provenance still needs to be reconciled before release.
+
+## Local release-closeout hardening (2026-08-12)
+
+`scripts/release-closeout.sh` now fails closed when required tools are missing,
+the version/release commit contract is wrong, the worktree is dirty, an
+attestation is missing, a tarball or WorkBuddy ZIP contains an unexpected file,
+the downloaded native binary reports the wrong version, or Hermes creation is
+not confirmed after the command returns. The local release smoke test also
+syntax-checks the closeout script. These changes are code/documentation gates;
+they do not create a tag, Release, Homebrew formula, or Hermes schedule.
 
 ## External playlist transfer hardening (2026-08-12)
 
@@ -250,4 +287,7 @@ registration and an operator-owned token remain external prerequisites.
 Local gates for this change: `cargo test --all-targets --locked` = 87 passed,
 1 ignored, plus 5 main tests; locked Clippy, release build, format/diff checks,
 shell syntax, matching Hermes helpers, and WorkBuddy package inspection all
-passed. No real-platform E2E or +7d release Go/No-Go decision is implied.
+passed. `cargo audit` loaded 1,211 advisories and scanned 188 dependencies with
+no finding; gitleaks scanned about 1.69 GB with no leak; release smoke passed all
+four installer fail-closed cases and WorkBuddy package checks. No real-platform
+E2E or +7d release Go/No-Go decision is implied.
