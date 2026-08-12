@@ -1,6 +1,6 @@
 # FreeFM 维修验证计划（v0.1 发布收口）
 
-更新：2026-08-11 修订 2（Asia/Shanghai）
+更新：2026-08-11 修订 3（Asia/Shanghai）
 适用仓库：`Yuxin-Qiao/FreeFM`（本地 `free-music-agent`）
 目标：在 `v0.1.0` 发布前，把全部剩余缺口逐项验证、修复并留下脱敏证据；
 只有本计划所有 Go 门槛通过，才允许创建 tag、发布 Release、更新 Homebrew、
@@ -8,6 +8,10 @@
 
 修订 2 新增：对 `scripts/release-closeout.sh` 的逐行复核结论与修复任务
 （G14，见 2.5 节）；G1 标记完成；更新 08-11 每日聚合证据。
+
+修订 3 新增：G14 修复已合并（PR #15，`main` = `f4e94c4`，CI 全绿）并在本
+地逐行复核确认；G7 已定位到确切的 cc-switch catalog 阻塞点（见 8.1），
+`~/.codex/skills/freefm` 已安装；更新 08-11 复核快照与剩余缺口表。
 
 本计划与 `TEAM-COMPLETION-PLAN.zh-CN.md` 配套：后者是总纲，本文是
 “从 2026-08-11 到今天”的逐日执行手册。所有步骤 fail-closed：
@@ -41,9 +45,17 @@
   attestation（`attest-build-provenance`）与 CycloneDX SBOM job。
 - Hermes：`cron list` 为空（正确保持暂停）；`~/.hermes/scripts/freefm-sync.sh`
   已安装且与仓库副本一致。
-- GitHub：`main` = `8963d0f`（PR #14 合并后 CI 全绿），本地工作区干净；
-  `homebrew-tap` 仓库已建（HEAD `07ca41a`），Formula 模板
+- GitHub：`main` = `f4e94c4`（PR #15 合并后 CI 全绿），本地工作区干净；
+  `gh auth` 已登录 `Yuxin-Qiao`；`homebrew-tap` 仓库远端已建（无本地
+  clone，G6 需 `gh repo clone Yuxin-Qiao/homebrew-tap`），Formula 模板
   `scripts/formula/freefm.rb` 就绪。
+- G14 四项发布缺陷已修复并合并：annotated tag（脚本第 91 行）、SBOM/
+  WorkBuddy/sidecar 产物完整性校验（第 134-154 行）、`brew audit
+  --strict --online`（第 217 行）、`gh api` run 查询兜底（第 102 行）、
+  Release notes 免责声明自动校验/补写（第 159-181 行）。
+- Codex Skill 已安装到 `~/.codex/skills/freefm`（SKILL.md + scripts，结构
+  正确）；但 `codex sandbox` 实机验证被本机 cc-switch catalog 阻塞（见
+  G7，BLOCKED_BY_ENVIRONMENT，非产品失败）。
 - 08-11 每日聚合：36/36 session 检查全部 authenticated 且 `vipType=0`；
   38 批被动 FM、106 个唯一盐化 track hash、零失败；每批 HTTP 11-17 次；
   证据文件约 25.8 KB；LaunchAgent 只含 `status`/`preview`；Hermes cron 为空。
@@ -56,13 +68,13 @@
 | 编号 | 缺口 | 阻塞方 | 当前状态 |
 |---|---|---|---|
 | G1 | ~~工作区 4 个文件改动未提交~~（PR #14 已合并） | 无 | ✅ 完成 |
-| G14 | closeout 脚本 4 处发布缺陷：轻量 tag、缺 SBOM/WorkBuddy 产物校验、`brew audit` 缺 `--online`、`gh run list --branch` 对 tag 触发不可靠 | 无 | 已定位（见 2.5），未修复 |
+| G14 | closeout 脚本 4 处发布缺陷（见 2.5） | 无 | ✅ 完成（PR #15 已合并，`f4e94c4`，脚本逐行复核通过） |
 | G2 | +7d 被动 FM / session 观察未完成 | 时间 | 门槛 2026-08-16 23:21:34 CST，还差约 5 天 |
 | G3 | session 服务端撤销 → fail-closed → 重新扫码 → 重启恢复未实跑 | 账号持有人扫码 | 未开始 |
 | G4 | 手工歌曲安全验证（L2）未实跑 | 账号持有人 1 分钟 | 未开始 |
 | G5 | `v0.1.0` tag / GitHub Release / checksum / SBOM / attestation 下载验证 | 先 G1+G2 | 未开始 |
 | G6 | Homebrew Formula 发布与 tap/install/test/audit | 先 G5 | 模板就绪未发布 |
-| G7 | Codex Skill 实机：cc-switch catalog 问题、`~/.codex/skills` 安装、`codex sandbox -- freefm sync --quiet` | 本机环境 | 未开始 |
+| G7 | Codex Skill 实机：`codex sandbox` 因 cc-switch catalog 的 `input_modalities: ["audio"]` 启动失败 | 本机环境（需用户授权或 GUI 操作） | 阻塞中（详见 8.1） |
 | G8 | WorkBuddy 真实客户端导入 | 已登录客户端 | 仅本地 ZIP 兼容 |
 | G9 | OpenClaw/Hermes 固定 tag 重装、ClawHub stable channel | 先 G5 | 未开始 |
 | G10 | Hermes `freefm-sync`（每 6h、`--no-agent`）创建与 24h 正式周期观察 | 先 G2+G5 | closeout 最后一步 |
@@ -110,8 +122,11 @@ wc -c "$EV/session.jsonl" "$EV/passive.jsonl"   # 只记录字节数
 
 ```sh
 launchctl print "gui/$(id -u)/com.freefm.validation" >/dev/null && echo loaded
-rg -o 'freefm [a-z]+' ~/.local/libexec/freefm-validation-observe.sh | sort -u
-# 期望输出只含 status 和 preview
+rg -o '\b(status|preview|sync|play|skip|trash|scrobble|audit|review|tui)\b' \
+  ~/.local/libexec/freefm-validation-observe.sh \
+  ~/.local/libexec/freefm-passive-fm-observe.sh | sort | uniq -c
+# 期望输出只含 status 和 preview（脚本以 $binary 变量调用，不能匹配
+# "freefm <cmd>" 字样；2026-08-11 已实测该命令，输出 status×2、preview×1）
 ```
 
 每日通过标准：authenticated 数与样本数相等、全部 `vipType=0`、无失败类型、
@@ -151,6 +166,10 @@ git add .gitignore TEAM-COMPLETION-PLAN.zh-CN.md V01-VALIDATION.md scripts/relea
 No-Go：CI 任一 job 失败且与本批改动相关 → 修复重跑，禁止“修 tag 绕过”。
 
 ## 2.5 G14 closeout 脚本发布缺陷修复（立即执行，先于一切发布动作）
+
+状态：✅ 已完成。PR #15（4 commits）已合并到 `main` = `f4e94c4`，CI 全绿；
+本机逐行复核确认以下修复点全部在脚本中生效。本节保留作复核依据，禁止
+重复提交同一批改动。
 
 负责人：Release owner；复核：Rust owner。
 背景：2026-08-11 对 `scripts/release-closeout.sh` 逐行复核并本机实测
@@ -341,16 +360,56 @@ brew audit --strict --online Yuxin-Qiao/tap/freefm
 
 负责人：Platform owner。需要本机用户配合的步骤明确标注。
 
-### Codex（G7）
+### Codex（G7）— 当前 BLOCKED_BY_ENVIRONMENT
 
-1. 处理 `~/.codex/cc-switch-model-catalog.json` 解析问题：由 cc-switch
-   重新生成或安全移走，不手工猜字段。
-2. 安装 `skills/freefm` 到 `~/.codex/skills/freefm`，重启 Codex 确认可发现。
-3. 用只读 `freefm status --json` 验证 sandbox permissions profile 可访问
-   网络与 `~/.freefm`；实跑 `codex sandbox -- freefm sync --quiet`，
-   确认 exit 0、无输出、未启动 Agent 回合。
-4. 文档明确：`codex exec`/桌面循环会消耗 token；零 token 周期只能走
-   OS cron/launchd 或 deterministic sandbox command。
+现状（2026-08-11 复核）：
+
+- `~/.codex/skills/freefm` 已安装（SKILL.md 的 `name: freefm`、`scripts/`
+  齐全），Codex Skill 发现环节 ✅。
+- 阻塞点：`~/.codex/config.toml` 第 9 行
+  `model_catalog_json = "cc-switch-model-catalog.json"`；该 catalog 由
+  CC Switch.app（v3.18.0，GUI）生成，其中当前模型
+  `opencode-go/deepseek-v4-flash` 的 `input_modalities` 为
+  `["text", "image", "audio"]`（约第 1498-1503 行），而 codex-cli
+  0.141.0 只接受 `text`/`image`，`codex sandbox -- freefm status --json`
+  因此报 `unknown variant 'audio'` 启动失败。
+- `config.toml` 内含用户自有 provider 块（opencodex 路由）与鉴权配置，
+  属于用户持久配置：任何修改前必须获得用户明确授权，且禁止改动
+  DNS/VPN/代理/Cargo 镜像；修复方式只能是以下三选一，不许“绕开验证”。
+
+决策矩阵（按优先级）：
+
+1. 【推荐，零配置修改】用户打开 CC Switch.app → 重新选择/保存一次当前
+   模型 → 重新生成 catalog（应恢复 `text`/`image` 兼容格式）。验证命令：
+
+   ```sh
+   jq -r '.. | objects | select(has("input_modalities")) | .input_modalities | join(",")' \
+     ~/.codex/cc-switch-model-catalog.json | sort -u
+   # 期望输出中不含 audio
+   ```
+
+2. 【需用户明确授权】仅在用户同意后，把 catalog 中该模型的 `"audio"` 项
+   删除（保留其余字段）。注意：CC Switch 下次保存会覆盖此文件，需告知
+   用户该修复非持久。
+3. 【不修改任何配置】放弃 G7 sandbox 实机验证，在 Release 说明中如实标
+   注 “Codex deterministic sandbox 验证 pending（本机 cc-switch catalog
+   兼容性阻塞）”；此项不阻塞 v0.1.0 发布，但最终 Go 清单对应项只能勾
+   “明确标 pending”。
+
+阻塞解除后的验证步骤（全部只读优先）：
+
+```sh
+codex sandbox -- freefm status --json          # 期望 exit 0、authenticated=true、vipType=0
+codex sandbox -- freefm preview --json         # 期望 exit 0，输出 decisions
+codex sandbox -- freefm doctor                  # 期望 exit 0，无凭证泄漏
+```
+
+`sync` 的 sandbox 实跑属于真实远端写入：必须在 G3/G4 完成后、由 Release
+owner 单独批准才执行；此前一律以 `status`/`preview` 验证通道。
+
+文档要求（无论是否实跑）：明确写出 `codex exec`/桌面循环会消耗 token；
+零 token 周期只能走 OS cron/launchd 或 deterministic sandbox command，
+不得用 Agent 提示词代替 `freefm sync --quiet`。
 
 ### WorkBuddy（G8，需要已登录客户端）
 
@@ -376,7 +435,17 @@ brew audit --strict --online Yuxin-Qiao/tap/freefm
 - G11 trusted mapping 真实重命中：等自然 FM 轮转，出现同原曲时确认
   `preview` 输出 `trusted_mapping` 且重新验证目标仍可播；不出现则以
   fixture 证据 + 明示“真实重命中未发生”收尾。
-- G12 PR #13：发布收口前由团队决策合并或关闭；不得让未审 bot 混入发布。
+- G12 PR #13（`codex/ai-review-bot`）：发布收口前由团队决策合并或关闭；
+  不得让未审 bot 混入发布。2026-08-11 复核证据：PR 标题
+  `ci: add AI verification bot (code review + acceptance gate)`，+622/-0，
+  作者 Yuxin-Qiao，CI 全绿（ai-review/msrv/rust×2/rustsec）。内容：
+  `.github/workflows/ai-review.yml` 在每个 PR 上调用外部模型端点
+  （`secrets.AI_REVIEW_API_KEY/ENDPOINT/MODEL`），ai-review 判定 exit 1
+  会阻塞合并（fail-closed），基础设施故障 exit 2 fail-open；附带
+  `scripts/ai-review.py`（342 行）与测试（203 行）。风险：未人工审阅的
+  LLM 合并闸门 + 新 secret 依赖，与 v0.1 发布冻结冲突。建议：
+  v0.1.0 发布前不合并；发布后若要采用，先降级为 advisory（不阻塞
+  合并）并人工审阅脚本后再启用。决策由团队做出，本计划不预设结论。
 - G13 文档最终复核：README 30 秒回答“是什么/安全吗/怎么装/成熟度”；
   中英命令与平台状态一致；平台表格官方彩色标志不依赖第三方热链；
   `V01-VALIDATION.md` 区分“真实证明/离线 fixture/未验证”；SECURITY、
@@ -387,7 +456,7 @@ brew audit --strict --online Yuxin-Qiao/tap/freefm
 全部通过才允许宣布 v0.1 完成并开启周期同步：
 
 - [ ] +24h 与 +7d 脱敏证据完成，无未解释失败
-- [ ] G14 closeout 脚本修复已合并且 CI 全绿（annotated tag / 产物完整性 /
+- [x] G14 closeout 脚本修复已合并且 CI 全绿（annotated tag / 产物完整性 /
       brew audit `--online` / run 查询兜底 / Release notes 校验）
 - [ ] G3 撤销/重扫/重启恢复通过
 - [ ] G4 手工歌曲安全通过
@@ -396,6 +465,7 @@ brew audit --strict --online Yuxin-Qiao/tap/freefm
 - [ ] Homebrew tap/install/test/audit 通过
 - [ ] OpenClaw/Hermes 固定 tag 零 LLM 路径复验通过
 - [ ] Codex deterministic sandbox 完成实机验证，或 Release 中明确标 pending
+      （当前因 cc-switch catalog `audio` modality 阻塞，见 8.1）
 - [ ] WorkBuddy 真实导入完成，或只以“本地兼容包”发布并明确未上架
 - [ ] 所有公开材料无凭证、原始歌曲/歌单数据、播放 URL 或完整响应
 
