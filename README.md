@@ -209,8 +209,21 @@ ignore unknown fields. Sync keeps `would_add_ids` for compatibility and adds
 The Rust binary is the product; platform integrations only install and invoke
 its deterministic command. Routine scheduled sync uses **zero LLM tokens**.
 
-Public skill listings: [ClawHub](https://clawhub.ai/yuxin-qiao/skills/freefm) ·
-[skills.sh](https://www.skills.sh/yuxin-qiao/freefm/freefm)
+### Public listings
+
+These are the actual public listing states. An install command or a compatible
+directory is not, by itself, a marketplace listing.
+
+| Channel | Current status | Public entry | Notes |
+| :--- | :--- | :--- | :--- |
+| [ClawHub](https://clawhub.ai/yuxin-qiao/skills/freefm) | **Published** | [FreeFM listing](https://clawhub.ai/yuxin-qiao/skills/freefm) | OpenClaw registry; latest published channel is `0.1.0-alpha.3` |
+| [skills.sh](https://www.skills.sh/yuxin-qiao/freefm/freefm) | **Indexed** | [FreeFM listing](https://www.skills.sh/yuxin-qiao/freefm/freefm) | Auto-indexed from the public GitHub repository; no separate publish step |
+| [Agent Skill Exchange](https://github.com/agentskillexchange/skills) | **Listed** | [FreeFM catalog entry](https://github.com/agentskillexchange/skills/tree/main/skills/freefm) | Catalog PR [#36](https://github.com/agentskillexchange/skills/pull/36) merged |
+| [KillerSkills](https://killerskills.ai/marketplace) | **Published; scan pending** | [FreeFM listing](https://killerskills.ai/skill/freefm) | Public detail page is live; the platform currently shows `Unscanned` |
+| [Agent Skills](https://www.agentskills.in/) | **Submitted; indexing pending** | [Submission page](https://www.agentskills.in/) | No stable FreeFM detail URL has been confirmed yet |
+| [LobeHub](https://lobehub.com/skills) | **Not listed** | [LobeHub marketplace](https://lobehub.com/skills) | FreeFM was not yet claimable in the platform index at the last check |
+
+### Installation adapters (not marketplace listings)
 
 | Logo | Platform | Installation | Scheduled Path (0 LLM) |
 | :---: | :--- | :--- | :--- |
