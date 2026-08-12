@@ -11,6 +11,7 @@
 [![平台](https://img.shields.io/badge/平台-macOS%20%7C%20Linux-1E6FFF)](#安装)
 [![License](https://img.shields.io/badge/license-MIT-6E56CF)](LICENSE)
 [![ClawHub](https://img.shields.io/badge/ClawHub-FreeFM-13B8A6)](https://clawhub.ai/yuxin-qiao/skills/freefm)
+[![skills.sh](https://skills.sh/b/yuxin-qiao/freefm)](https://www.skills.sh/yuxin-qiao/freefm/freefm)
 [![无 LLM](https://img.shields.io/badge/定时同步-0%20LLM%20token-22C55E)](#agent-平台)
 
 [快速开始](#快速开始) · [让 AI 帮你安装](#让-ai-帮你安装) · [TUI](#tui) ·
@@ -191,6 +192,21 @@ MUSIC_U、session 和二维码 key。使用
 
 产品永远是 Rust 二进制；Skill 只负责安装和确定性调用。正常定时同步
 **0 LLM token**。
+
+### 公开上架状态
+
+下面只列真正的公开技能条目。安装命令或兼容目录本身，不等于已经上架到市场。
+
+| 渠道 | 当前状态 | 公开入口 | 说明 |
+| :--- | :--- | :--- | :--- |
+| [ClawHub](https://clawhub.ai/yuxin-qiao/skills/freefm) | **已发布** | [FreeFM 条目](https://clawhub.ai/yuxin-qiao/skills/freefm) | OpenClaw 注册中心；当前最新发布通道为 `0.1.0-alpha.3` |
+| [skills.sh](https://www.skills.sh/yuxin-qiao/freefm/freefm) | **已收录** | [FreeFM 条目](https://www.skills.sh/yuxin-qiao/freefm/freefm) | 从公开 GitHub 仓库自动索引，无需单独发布 |
+| [Agent Skill Exchange](https://github.com/agentskillexchange/skills) | **已收录** | [FreeFM 目录条目](https://github.com/agentskillexchange/skills/tree/main/skills/freefm) | 目录 PR [#36](https://github.com/agentskillexchange/skills/pull/36) 已合并 |
+| [KillerSkills](https://killerskills.ai/marketplace) | **已发布，等待扫描** | [FreeFM 条目](https://killerskills.ai/skill/freefm) | 公开详情页已生成，平台当前显示 `Unscanned` |
+| [Agent Skills](https://www.agentskills.in/) | **已提交，等待索引** | [提交入口](https://www.agentskills.in/) | 目前还没有确认稳定的 FreeFM 详情页 |
+| [LobeHub](https://lobehub.com/skills) | **尚未上架** | [LobeHub 技能市场](https://lobehub.com/skills) | 上次核验时 FreeFM 尚未进入可认领的平台索引 |
+
+### 安装适配（不是市场上架）
 
 | Logo | 平台 | 安装方法 | 无模型定时路径 (0 Token) |
 | :---: | :--- | :--- | :--- |

@@ -11,6 +11,7 @@ Native Rust CLI/TUI · Safely sync free-playable NetEase Private FM tracks into 
 [![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-1E6FFF)](#install)
 [![License](https://img.shields.io/badge/license-MIT-6E56CF)](LICENSE)
 [![ClawHub](https://img.shields.io/badge/ClawHub-FreeFM-13B8A6)](https://clawhub.ai/yuxin-qiao/skills/freefm)
+[![skills.sh](https://skills.sh/b/yuxin-qiao/freefm)](https://www.skills.sh/yuxin-qiao/freefm/freefm)
 [![No LLM](https://img.shields.io/badge/scheduled%20sync-0%20LLM%20tokens-22C55E)](#agent-platforms)
 
 [简体中文](README.zh-CN.md) · [Quick start](#quick-start) · [Ask an AI](#ask-an-ai-to-install-it) ·
@@ -207,6 +208,22 @@ ignore unknown fields. Sync keeps `would_add_ids` for compatibility and adds
 
 The Rust binary is the product; platform integrations only install and invoke
 its deterministic command. Routine scheduled sync uses **zero LLM tokens**.
+
+### Public listings
+
+These are the actual public listing states. An install command or a compatible
+directory is not, by itself, a marketplace listing.
+
+| Channel | Current status | Public entry | Notes |
+| :--- | :--- | :--- | :--- |
+| [ClawHub](https://clawhub.ai/yuxin-qiao/skills/freefm) | **Published** | [FreeFM listing](https://clawhub.ai/yuxin-qiao/skills/freefm) | OpenClaw registry; latest published channel is `0.1.0-alpha.3` |
+| [skills.sh](https://www.skills.sh/yuxin-qiao/freefm/freefm) | **Indexed** | [FreeFM listing](https://www.skills.sh/yuxin-qiao/freefm/freefm) | Auto-indexed from the public GitHub repository; no separate publish step |
+| [Agent Skill Exchange](https://github.com/agentskillexchange/skills) | **Listed** | [FreeFM catalog entry](https://github.com/agentskillexchange/skills/tree/main/skills/freefm) | Catalog PR [#36](https://github.com/agentskillexchange/skills/pull/36) merged |
+| [KillerSkills](https://killerskills.ai/marketplace) | **Published; scan pending** | [FreeFM listing](https://killerskills.ai/skill/freefm) | Public detail page is live; the platform currently shows `Unscanned` |
+| [Agent Skills](https://www.agentskills.in/) | **Submitted; indexing pending** | [Submission page](https://www.agentskills.in/) | No stable FreeFM detail URL has been confirmed yet |
+| [LobeHub](https://lobehub.com/skills) | **Not listed** | [LobeHub marketplace](https://lobehub.com/skills) | FreeFM was not yet claimable in the platform index at the last check |
+
+### Installation adapters (not marketplace listings)
 
 | Logo | Platform | Installation | Scheduled Path (0 LLM) |
 | :---: | :--- | :--- | :--- |
