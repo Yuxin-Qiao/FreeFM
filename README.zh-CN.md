@@ -11,6 +11,7 @@
 [![平台](https://img.shields.io/badge/平台-macOS%20%7C%20Linux-1E6FFF)](#安装)
 [![License](https://img.shields.io/badge/license-MIT-6E56CF)](LICENSE)
 [![ClawHub](https://img.shields.io/badge/ClawHub-FreeFM-13B8A6)](https://clawhub.ai/yuxin-qiao/skills/freefm)
+[![skills.sh](https://skills.sh/b/yuxin-qiao/freefm)](https://www.skills.sh/yuxin-qiao/freefm/freefm)
 [![无 LLM](https://img.shields.io/badge/定时同步-0%20LLM%20token-22C55E)](#agent-平台)
 
 [快速开始](#快速开始) · [让 AI 帮你安装](#让-ai-帮你安装) · [TUI](#tui) ·
@@ -191,6 +192,9 @@ MUSIC_U、session 和二维码 key。使用
 
 产品永远是 Rust 二进制；Skill 只负责安装和确定性调用。正常定时同步
 **0 LLM token**。
+
+公开技能条目：[ClawHub](https://clawhub.ai/yuxin-qiao/skills/freefm) ·
+[skills.sh](https://www.skills.sh/yuxin-qiao/freefm/freefm)
 
 | Logo | 平台 | 安装方法 | 无模型定时路径 (0 Token) |
 | :---: | :--- | :--- | :--- |
